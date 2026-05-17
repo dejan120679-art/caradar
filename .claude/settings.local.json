@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm install *)",
+      "PowerShell(pm2 save *)",
+      "PowerShell(pm2 startup *)",
+      "PowerShell(& \"$env:APPDATA\\\\npm\\\\pm2-windows-startup\" install 2>&1)",
+      "PowerShell(pm2-startup install *)",
+      "PowerShell(pm2 *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Start-Process \"http://localhost:3000\")",
+      "PowerShell(pm2 jlist *)",
+      "PowerShell(Get-ChildItem C:\\\\caradar -Exclude node_modules -File -Recurse | Where-Object { $_.Extension -in '.js','.json','.mjs','.cjs' } | Select-Object -ExpandProperty FullName)"
+    ]
+  }
+}

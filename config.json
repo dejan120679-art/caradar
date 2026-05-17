@@ -1,0 +1,24 @@
+{
+  "marke": "Mercedes-Benz",
+  "modell": "glb",
+  "preisMin": 25000,
+  "preisMax": 40000,
+  "kmMax": 120000,
+  "baujahrVon": null,
+  "baujahrBis": null,
+  "ort": "",
+  "radiusKm": null,
+  "zustand": [
+    "gebraucht",
+    "beschaedigt",
+    "unfallwagen"
+  ],
+  "kraftstoff": [
+    "benzin",
+    "diesel"
+  ],
+  "getriebe": [
+    "automatik"
+  ],
+  "maxAlterStunden": null
+}
