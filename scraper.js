@@ -11,7 +11,7 @@ function loadConfig() {
     return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
   } catch {
     return {
-      marke: '', modell: '', preisMin: null, preisMax: null,
+      marke: '', modell: '', zusatz: '', preisMin: null, preisMax: null,
       kmMax: null, baujahrVon: null, baujahrBis: null,
       ort: '', radiusKm: null, zustand: [],
     };
@@ -248,6 +248,10 @@ function matchesConfig(l) {
         !l.description.toLowerCase().replace(/[-\s]+/g, '').includes(m))
       return false;
   }
+  if (CONFIG.zusatz && CONFIG.zusatz.trim()) {
+    const z = CONFIG.zusatz.trim().toLowerCase();
+    if (!l.description.toLowerCase().includes(z)) return false;
+  }
   if (CONFIG.preisMin  !== null && l.price   !== null && l.price   < CONFIG.preisMin)  return false;
   if (CONFIG.preisMax  !== null && l.price   !== null && l.price   > CONFIG.preisMax)  return false;
   if (CONFIG.kmMax     !== null && l.mileage !== null && l.mileage > CONFIG.kmMax)     return false;
@@ -327,7 +331,7 @@ function formatPublished(published) {
 }
 
 function searchLabel() {
-  const vehicle  = [CONFIG.marke, CONFIG.modell].filter(Boolean).join(' ') || 'Fahrzeug';
+  const vehicle  = [CONFIG.marke, CONFIG.modell, CONFIG.zusatz].filter(Boolean).join(' ') || 'Fahrzeug';
   const location = CONFIG.ort || 'Österreich';
   const price    = CONFIG.preisMax
     ? `≤ € ${CONFIG.preisMax.toLocaleString('de-AT')}`

@@ -1,24 +1,26 @@
 {
-  "marke": "Mercedes-Benz",
-  "modell": "glb",
-  "preisMin": 25000,
-  "preisMax": 40000,
-  "kmMax": 120000,
-  "baujahrVon": null,
+  "marke": "Honda",
+  "modell": "crv",
+  "preisMin": null,
+  "preisMax": 60000,
+  "kmMax": 90000,
+  "baujahrVon": 2024,
   "baujahrBis": null,
   "ort": "",
   "radiusKm": null,
   "zustand": [
     "gebraucht",
-    "beschaedigt",
-    "unfallwagen"
+    "beschaedigt"
   ],
   "kraftstoff": [
     "benzin",
-    "diesel"
+    "diesel",
+    "elektro",
+    "hybrid"
   ],
   "getriebe": [
     "automatik"
   ],
-  "maxAlterStunden": null
+  "maxAlterStunden": null,
+  "minAlterStunden": null
 }

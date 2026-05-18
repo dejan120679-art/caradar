@@ -282,7 +282,7 @@
     <div class="card-title">Suchparameter</div>
     <form id="configForm">
 
-      <div class="grid grid-2">
+      <div class="grid grid-3">
         <div class="field">
           <label for="marke">Marke</label>
           <select id="marke" name="marke" onchange="populateModels()">
@@ -327,6 +327,10 @@
           <select id="modell" name="modell">
             <option value="">Alle Modelle</option>
           </select>
+        </div>
+        <div class="field">
+          <label for="zusatz">Zusatz <span style="font-weight:400;opacity:.6">(optional)</span></label>
+          <input type="text" id="zusatz" name="zusatz" placeholder="z.B. 220, AMG, 4MATIC, Sport…">
         </div>
       </div>
 
@@ -572,6 +576,7 @@ async function loadConfig() {
     setVal('marke', cfg.marke || '');
     populateModels();
     setVal('modell', cfg.modell || '');
+    setVal('zusatz', cfg.zusatz || '');
     setVal('preisMin',   cfg.preisMin   ?? '');
     setVal('preisMax',   cfg.preisMax   ?? '');
     setVal('kmMax',      cfg.kmMax      ?? '');
@@ -606,6 +611,7 @@ function readForm() {
   return {
     marke:      str('marke'),
     modell:     str('modell'),
+    zusatz:     str('zusatz'),
     preisMin:   num('preisMin'),
     preisMax:   num('preisMax'),
     kmMax:      num('kmMax'),

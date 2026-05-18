@@ -10,7 +10,12 @@
       "PowerShell(New-Item *)",
       "PowerShell(Start-Process \"http://localhost:3000\")",
       "PowerShell(pm2 jlist *)",
-      "PowerShell(Get-ChildItem C:\\\\caradar -Exclude node_modules -File -Recurse | Where-Object { $_.Extension -in '.js','.json','.mjs','.cjs' } | Select-Object -ExpandProperty FullName)"
+      "PowerShell(Get-ChildItem C:\\\\caradar -Exclude node_modules -File -Recurse | Where-Object { $_.Extension -in '.js','.json','.mjs','.cjs' } | Select-Object -ExpandProperty FullName)",
+      "Bash(node *)",
+      "Bash(Select-String -NotMatch \"injected env\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
