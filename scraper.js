@@ -27,12 +27,13 @@ const SENT_FILE       = path.join(__dirname, 'sent.json');
 const LAST_ALERT_FILE = path.join(__dirname, 'lastAlert.json');
 const MODE_FILE       = path.join(__dirname, 'scraper-mode.json');
 const STATE_FILE      = path.join(__dirname, 'browser-state.json');
-const INTERVAL   = 5 * 60 * 1000;
 const MAX_SEEN   = 1000;
 
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const UA = 'CaRadar-Bot/1.0 (alert-service; contact: support@caradar.at)';
+
+function randomInterval() {
+  return Math.round((4 + Math.random() * 3) * 60 * 1000); // 4–7 min
+}
 
 const bot = new TelegramBot(TOKEN);
 
@@ -454,62 +455,76 @@ async function run() {
   let alertsToday = (alertsDate === today) ? _alertsToday : 0;
   const maxDaily  = CONFIG.maxAlertsProTag || null;
 
+  const listings = await scrapeListings();
+  const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
+  const toAlert  = unseen.filter(isFresh);
+  const tooOld   = unseen.filter(l => !isFresh(l));
+  console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
+
+  for (const l of toAlert) {
+    if (maxDaily !== null && alertsToday >= maxDaily) {
+      if (newLimitAlertSentDate !== today) {
+        try {
+          await bot.sendMessage(CHAT_ID,
+            `⚠️ Tageslimit von ${maxDaily} Alerts erreicht — weitere Alerts erst wieder morgen.`
+          );
+          newLimitAlertSentDate = today;
+          console.log('  Tageslimit erreicht.');
+        } catch {}
+      }
+      seen.add(l.id);
+      continue;
+    }
+    try {
+      await sendAlert(l);
+      seen.add(l.id);
+      sent.add(l.id);
+      alertsToday++;
+      newLastAlertDate = today;
+      const { date: ad, hour: ah, minute: am } = viennaDateHour();
+      const dateStr = `${ad} ${String(ah).padStart(2,'0')}:${String(am).padStart(2,'0')}`;
+      const vehicle = [l.make, l.model].filter(Boolean).join(' ') || l.description;
+      const price   = l.price !== null ? `€ ${l.price.toLocaleString('de-AT')}` : 'Preis auf Anfrage';
+      saveLastAlert(vehicle, price, dateStr);
+      console.log(`  → Gesendet: ${l.description} (€ ${l.price})`);
+    } catch (sendErr) {
+      console.error(`  Telegram-Fehler: ${sendErr.message}`);
+    }
+  }
+  tooOld.forEach(l => seen.add(l.id));
+
+  // Tages-Heartbeat um 09:00 Uhr — nur wenn heute noch kein Alert und noch kein Heartbeat
+  if (hour === 9 && minute < 5 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
+    try {
+      await bot.sendMessage(CHAT_ID,
+        '✅ CaRadar läuft — heute noch keine neuen Inserate gefunden die deinen Kriterien entsprechen.'
+      );
+      newLastHeartbeatDate = today;
+      console.log('  Tages-Heartbeat gesendet.');
+    } catch (hbErr) {
+      console.error(`  Heartbeat Telegram-Fehler: ${hbErr.message}`);
+    }
+  }
+
+  saveSeen(seen, newLastAlertDate, newLastHeartbeatDate, alertsToday, today, newLimitAlertSentDate);
+  saveSent(sent);
+}
+
+let errorCount = 0;
+
+async function schedule() {
   try {
-    const listings = await scrapeListings();
-    const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
-    const toAlert  = unseen.filter(isFresh);
-    const tooOld   = unseen.filter(l => !isFresh(l));
-    console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
-
-    for (const l of toAlert) {
-      if (maxDaily !== null && alertsToday >= maxDaily) {
-        if (newLimitAlertSentDate !== today) {
-          try {
-            await bot.sendMessage(CHAT_ID,
-              `⚠️ Tageslimit von ${maxDaily} Alerts erreicht — weitere Alerts erst wieder morgen.`
-            );
-            newLimitAlertSentDate = today;
-            console.log('  Tageslimit erreicht.');
-          } catch {}
-        }
-        seen.add(l.id);
-        continue;
-      }
-      try {
-        await sendAlert(l);
-        seen.add(l.id);
-        sent.add(l.id);
-        alertsToday++;
-        newLastAlertDate = today;
-        const { date: ad, hour: ah, minute: am } = viennaDateHour();
-        const dateStr = `${ad} ${String(ah).padStart(2,'0')}:${String(am).padStart(2,'0')}`;
-        const vehicle = [l.make, l.model].filter(Boolean).join(' ') || l.description;
-        const price   = l.price !== null ? `€ ${l.price.toLocaleString('de-AT')}` : 'Preis auf Anfrage';
-        saveLastAlert(vehicle, price, dateStr);
-        console.log(`  → Gesendet: ${l.description} (€ ${l.price})`);
-      } catch (sendErr) {
-        console.error(`  Telegram-Fehler: ${sendErr.message}`);
-      }
-    }
-    tooOld.forEach(l => seen.add(l.id));
-
-    // Tages-Heartbeat um 09:00 Uhr — nur wenn heute noch kein Alert und noch kein Heartbeat
-    if (hour === 9 && minute < 5 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
-      try {
-        await bot.sendMessage(CHAT_ID,
-          '✅ CaRadar läuft — heute noch keine neuen Inserate gefunden die deinen Kriterien entsprechen.'
-        );
-        newLastHeartbeatDate = today;
-        console.log('  Tages-Heartbeat gesendet.');
-      } catch (hbErr) {
-        console.error(`  Heartbeat Telegram-Fehler: ${hbErr.message}`);
-      }
-    }
-
-    saveSeen(seen, newLastAlertDate, newLastHeartbeatDate, alertsToday, today, newLimitAlertSentDate);
-    saveSent(sent);
+    await run();
+    errorCount = 0;
+    const delay = randomInterval();
+    console.log(`  Nächster Lauf in ${Math.round(delay / 60000 * 10) / 10} Min`);
+    setTimeout(schedule, delay);
   } catch (err) {
-    console.error(`  Scraping-Fehler (nächster Versuch in 5 Min): ${err.message}`);
+    errorCount++;
+    const backoffMs = [60000, 120000, 240000][Math.min(errorCount - 1, 2)];
+    console.error(`  Scraping-Fehler (Backoff ${backoffMs / 1000}s, Fehler #${errorCount}): ${err.message}`);
+    if (errorCount >= 3) errorCount = 0;
+    setTimeout(schedule, backoffMs);
   }
 }
 
@@ -521,7 +536,7 @@ async function run() {
   console.log('caradar gestartet');
   console.log(`Suche:    ${searchLabel()}`);
   console.log(`URL:      ${buildSearchUrl()}`);
-  console.log('Interval: alle 5 Minuten\n');
+  console.log('Interval: 4–7 Minuten (zufällig)\n');
   await ensureBrowserState();
   const mode = getMode();
   if (mode === 'resuming') {
@@ -540,6 +555,5 @@ async function run() {
       console.error(`Bestätigungs-Alert fehlgeschlagen: ${err.message}`);
     }
   }
-  await run();
-  setInterval(run, INTERVAL);
+  await schedule();
 })();
