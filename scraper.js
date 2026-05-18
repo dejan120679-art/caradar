@@ -265,6 +265,8 @@ async function scrapeListings() {
           id:          String(ad.id),
           description: (ad.description || '').trim(),
           body:        (ad.body || '').trim(),
+          bodyDyn:     (get('BODY_DYN') || '').trim(),
+          modelSpec:   (get('CAR_MODEL/MODEL_SPECIFICATION') || '').trim(),
           make:        (get('CAR_MODEL/MAKE')       || '').trim(),
           model:       (get('CAR_MODEL/MODEL')      || '').trim(),
           state:       (get('STATE')                || '').trim(),
@@ -306,7 +308,7 @@ function matchesConfig(l) {
   }
   if (CONFIG.zusatz && CONFIG.zusatz.trim()) {
     const z = CONFIG.zusatz.trim().toLowerCase();
-    const hay = (l.description + ' ' + (l.body || '')).toLowerCase();
+    const hay = [l.description, l.modelSpec, l.bodyDyn, l.body].join(' ').toLowerCase();
     if (!hay.includes(z)) return false;
   }
   if (CONFIG.preisMin  !== null && l.price   !== null && l.price   < CONFIG.preisMin)  return false;
