@@ -305,9 +305,10 @@ function matchesConfig(l) {
       return false;
   }
   if (CONFIG.zusatz && CONFIG.zusatz.trim()) {
-    const z = CONFIG.zusatz.trim().toLowerCase();
-    const hay = [l.description, l.modelSpec, l.bodyDyn, l.body].join(' ').toLowerCase();
-    if (!hay.includes(z)) return false;
+    const norm  = s => String(s).toLowerCase().replace(/[-\s_]+/g, '');
+    const words = CONFIG.zusatz.trim().split(/\s+/).map(norm).filter(Boolean);
+    const hay   = norm([l.description, l.modelSpec, l.bodyDyn, l.body].join(' '));
+    if (!words.every(w => hay.includes(w))) return false;
   }
   if (CONFIG.preisMin  !== null && l.price   !== null && l.price   < CONFIG.preisMin)  return false;
   if (CONFIG.preisMax  !== null && l.price   !== null && l.price   > CONFIG.preisMax)  return false;
