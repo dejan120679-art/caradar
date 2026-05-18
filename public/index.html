@@ -200,10 +200,25 @@
     border-radius: var(--radius);
     padding: 18px 24px;
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    gap: 8px;
     margin-bottom: 20px;
   }
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  #statusLabel {
+    font-size: 0.88rem;
+    color: var(--text);
+    flex: 1;
+  }
+  .status-last-alert {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .status-last-alert span { color: var(--text); }
   .pill {
     display: inline-flex;
     align-items: center;
@@ -219,7 +234,16 @@
   .pill.offline { background: rgba(239,68,68,.15);  color: var(--danger);  }
   .pill.pending { background: rgba(245,158,11,.15); color: #f59e0b; }
   .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  .status-meta { color: var(--muted); font-size: 0.84rem; margin-left: auto; }
+  .status-meta { color: var(--muted); font-size: 0.84rem; }
+
+  /* Pause button */
+  .btn-pause {
+    background: #2a2210;
+    color: #f59e0b;
+    border: 1px solid #5a4a10;
+    min-width: 120px;
+  }
+  .btn-pause:hover { background: #3a3010; }
 
   /* Log */
   .log-box {
@@ -271,11 +295,17 @@
   </header>
 
   <div class="status-bar" id="statusBar">
-    <span class="pill pending" id="statusPill">
-      <span class="dot"></span>
-      <span id="statusText">Lädt…</span>
-    </span>
-    <span class="status-meta" id="statusMeta"></span>
+    <div class="status-row">
+      <span class="pill pending" id="statusPill">
+        <span class="dot"></span>
+        <span id="statusText">Lädt…</span>
+      </span>
+      <span id="statusLabel"></span>
+      <span class="status-meta" id="statusMeta"></span>
+    </div>
+    <div id="lastAlertRow" class="status-last-alert" style="display:none">
+      Letzter Alert: <span id="lastAlertText"></span>
+    </div>
   </div>
 
   <div class="card">
@@ -453,6 +483,13 @@
 
       <div class="grid grid-2" style="margin-top:18px">
         <div class="field">
+          <label for="maxAlertsProTag">Max. Alerts pro Tag <span style="font-weight:400;opacity:.6">(optional)</span></label>
+          <input type="number" id="maxAlertsProTag" name="maxAlertsProTag" placeholder="unbegrenzt" min="1">
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:18px">
+        <div class="field">
           <label for="maxAlterStunden">Inseratsalter — jünger als</label>
           <select id="maxAlterStunden" name="maxAlterStunden">
             <option value="">Kein Limit</option>
@@ -479,10 +516,12 @@
 
       <div class="btn-row">
         <button type="submit" class="btn btn-primary" id="btnStart">Alert starten</button>
+        <button type="button" class="btn btn-pause" id="btnPause" style="display:none">Pausieren</button>
+        <button type="button" class="btn btn-pause" id="btnResume" style="display:none">Fortsetzen</button>
         <button type="button" class="btn btn-stop" id="btnStop">Stoppen</button>
       </div>
       <div class="reset-row">
-        <button type="button" class="btn btn-reset" id="btnReset">Gesehene Inserate zurücksetzen</button>
+        <button type="button" class="btn btn-reset" id="btnClear">Formular leeren</button>
       </div>
 
     </form>
@@ -585,6 +624,7 @@ async function loadConfig() {
     setVal('ort',            cfg.ort            || '');
     setVal('maxAlterStunden', cfg.maxAlterStunden ?? '');
     setVal('minAlterStunden', cfg.minAlterStunden ?? '');
+    setVal('maxAlertsProTag', cfg.maxAlertsProTag ?? '');
     const zustand    = cfg.zustand    || [];
     const kraftstoff = cfg.kraftstoff || [];
     const getriebe   = cfg.getriebe   || [];
@@ -609,14 +649,14 @@ function readForm() {
   const num = id => { const v = document.getElementById(id).value; return v !== '' ? Number(v) : null; };
   const str = id => document.getElementById(id).value.trim();
   return {
-    marke:      str('marke'),
-    modell:     str('modell'),
-    zusatz:     str('zusatz'),
-    preisMin:   num('preisMin'),
-    preisMax:   num('preisMax'),
-    kmMax:      num('kmMax'),
-    baujahrVon: num('baujahrVon'),
-    baujahrBis: num('baujahrBis'),
+    marke:           str('marke'),
+    modell:          str('modell'),
+    zusatz:          str('zusatz'),
+    preisMin:        num('preisMin'),
+    preisMax:        num('preisMax'),
+    kmMax:           num('kmMax'),
+    baujahrVon:      num('baujahrVon'),
+    baujahrBis:      num('baujahrBis'),
     ort:             str('ort'),
     radiusKm:        null,
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
@@ -624,21 +664,61 @@ function readForm() {
     getriebe:        [...document.querySelectorAll('input[name="getriebe"]:checked')].map(c => c.value),
     maxAlterStunden: num('maxAlterStunden'),
     minAlterStunden: num('minAlterStunden'),
+    maxAlertsProTag: num('maxAlertsProTag'),
   };
+}
+
+function clearForm() {
+  document.getElementById('marke').value = '';
+  populateModels();
+  ['zusatz','preisMin','preisMax','kmMax','maxAlertsProTag'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['baujahrVon','baujahrBis','ort','maxAlterStunden','minAlterStunden'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  toast('Formular geleert.', 'ok');
 }
 
 async function pollStatus() {
   try {
     const data = await fetch('/api/status').then(r => r.json());
-    const st = data.status || 'stopped';
+    const st   = data.status || 'stopped';
+    const mode = data.mode || (st === 'online' ? 'running' : 'stopped');
+
     const pill = document.getElementById('statusPill');
-    pill.className = 'pill ' + (st === 'online' ? 'online' : st === 'stopping' ? 'pending' : 'offline');
-    document.getElementById('statusText').textContent =
-      st === 'online' ? 'Aktiv' : st === 'stopping' ? 'Wird gestoppt…' : 'Gestoppt';
+    if (mode === 'running' || mode === 'resuming') {
+      pill.className = 'pill online';
+      document.getElementById('statusText').textContent = 'Aktiv';
+    } else if (mode === 'paused') {
+      pill.className = 'pill pending';
+      document.getElementById('statusText').textContent = 'Pausiert';
+    } else {
+      pill.className = 'pill offline';
+      document.getElementById('statusText').textContent = 'Gestoppt';
+    }
+
+    const label = data.searchLabel || '';
+    document.getElementById('statusLabel').textContent = label ? `sucht nach ${label}` : '';
+
     const parts = [];
     if (data.memory)   parts.push((data.memory / 1024 / 1024).toFixed(1) + ' MB');
     if (data.restarts) parts.push(data.restarts + ' Restarts');
     document.getElementById('statusMeta').textContent = parts.join(' · ');
+
+    const lastAlertRow = document.getElementById('lastAlertRow');
+    if (data.lastAlert && data.lastAlert.dateStr) {
+      lastAlertRow.style.display = '';
+      document.getElementById('lastAlertText').textContent =
+        `${data.lastAlert.dateStr} — ${data.lastAlert.vehicle} ${data.lastAlert.price}`;
+    } else {
+      lastAlertRow.style.display = 'none';
+    }
+
+    document.getElementById('btnPause').style.display  = (mode === 'running') ? '' : 'none';
+    document.getElementById('btnResume').style.display = (mode === 'paused')  ? '' : 'none';
+
     const logBox = document.getElementById('logBox');
     logBox.textContent = (data.logs || []).join('\n');
     logBox.scrollTop = logBox.scrollHeight;
@@ -675,18 +755,31 @@ document.getElementById('btnStop').addEventListener('click', async () => {
   } catch { toast('Fehler', 'err'); }
 });
 
-document.getElementById('btnReset').addEventListener('click', async () => {
+document.getElementById('btnPause').addEventListener('click', async () => {
   try {
-    const r = await fetch('/api/config', {
+    await fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ config: readForm(), resetSeen: true }),
+      body: JSON.stringify({ action: 'pause' }),
     });
-    const d = await r.json();
-    if (d.ok) toast('Gesehene Inserate zurückgesetzt & Scraper neu gestartet.', 'ok');
-    else toast('Fehler: ' + (d.error || 'unbekannt'), 'err');
-  } catch { toast('Netzwerkfehler', 'err'); }
+    toast('Scraper pausiert.', 'ok');
+    setTimeout(pollStatus, 1000);
+  } catch { toast('Fehler', 'err'); }
 });
+
+document.getElementById('btnResume').addEventListener('click', async () => {
+  try {
+    await fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resume' }),
+    });
+    toast('Scraper wird fortgesetzt…', 'ok');
+    setTimeout(pollStatus, 2000);
+  } catch { toast('Fehler', 'err'); }
+});
+
+document.getElementById('btnClear').addEventListener('click', clearForm);
 
 loadConfig();
 pollStatus();

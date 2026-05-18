@@ -22,8 +22,11 @@ let CONFIG = loadConfig();
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const SEEN_FILE  = path.join(__dirname, 'seen.json');
-const STATE_FILE = path.join(__dirname, 'browser-state.json');
+const SEEN_FILE       = path.join(__dirname, 'seen.json');
+const SENT_FILE       = path.join(__dirname, 'sent.json');
+const LAST_ALERT_FILE = path.join(__dirname, 'lastAlert.json');
+const MODE_FILE       = path.join(__dirname, 'scraper-mode.json');
+const STATE_FILE      = path.join(__dirname, 'browser-state.json');
 const INTERVAL   = 5 * 60 * 1000;
 const MAX_SEEN   = 1000;
 
@@ -123,21 +126,52 @@ function loadSeen() {
     const raw = JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'));
     const ids = Array.isArray(raw) ? raw : (raw.ids || []);
     return {
-      ids:               new Set(ids),
-      lastAlertDate:     raw.lastAlertDate     || null,
-      lastHeartbeatDate: raw.lastHeartbeatDate || null,
+      ids:                new Set(ids),
+      lastAlertDate:      raw.lastAlertDate      || null,
+      lastHeartbeatDate:  raw.lastHeartbeatDate  || null,
+      alertsToday:        raw.alertsToday        || 0,
+      alertsDate:         raw.alertsDate         || null,
+      limitAlertSentDate: raw.limitAlertSentDate || null,
     };
   } catch {
-    return { ids: new Set(), lastAlertDate: null, lastHeartbeatDate: null };
+    return { ids: new Set(), lastAlertDate: null, lastHeartbeatDate: null, alertsToday: 0, alertsDate: null, limitAlertSentDate: null };
   }
 }
 
-function saveSeen(ids, lastAlertDate, lastHeartbeatDate) {
+function saveSeen(ids, lastAlertDate, lastHeartbeatDate, alertsToday, alertsDate, limitAlertSentDate) {
   fs.writeFileSync(SEEN_FILE, JSON.stringify({
     ids: [...ids].slice(-MAX_SEEN),
     lastAlertDate,
     lastHeartbeatDate,
+    alertsToday,
+    alertsDate,
+    limitAlertSentDate,
   }));
+}
+
+function loadSent() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SENT_FILE, 'utf8'));
+    const ids = Array.isArray(raw) ? raw : (raw.ids || []);
+    return new Set(ids);
+  } catch { return new Set(); }
+}
+
+function saveSent(sentIds) {
+  fs.writeFileSync(SENT_FILE, JSON.stringify({ ids: [...sentIds] }));
+}
+
+function saveLastAlert(vehicle, price, dateStr) {
+  fs.writeFileSync(LAST_ALERT_FILE, JSON.stringify({ vehicle, price, dateStr }));
+}
+
+function getMode() {
+  try { return JSON.parse(fs.readFileSync(MODE_FILE, 'utf8')).mode || 'running'; }
+  catch { return 'running'; }
+}
+
+function setMode(mode) {
+  fs.writeFileSync(MODE_FILE, JSON.stringify({ mode }));
 }
 
 // ─── Browser-State (Cookies einmalig akzeptieren) ─────────────────────────────
@@ -410,24 +444,48 @@ async function run() {
   const ts = new Date().toLocaleTimeString('de-AT');
   console.log(`[${ts}] Suche: ${searchLabel()} | URL: ${buildSearchUrl()}`);
 
-  const { ids: seen, lastAlertDate, lastHeartbeatDate } = loadSeen();
-  let newLastAlertDate     = lastAlertDate;
-  let newLastHeartbeatDate = lastHeartbeatDate;
+  const { ids: seen, lastAlertDate, lastHeartbeatDate, alertsToday: _alertsToday, alertsDate, limitAlertSentDate } = loadSeen();
+  const sent = loadSent();
+  let newLastAlertDate      = lastAlertDate;
+  let newLastHeartbeatDate  = lastHeartbeatDate;
+  let newLimitAlertSentDate = limitAlertSentDate;
+
+  const { date: today, hour, minute } = viennaDateHour();
+  let alertsToday = (alertsDate === today) ? _alertsToday : 0;
+  const maxDaily  = CONFIG.maxAlertsProTag || null;
 
   try {
     const listings = await scrapeListings();
-    const unseen   = listings.filter(l => !seen.has(l.id));
+    const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
     const toAlert  = unseen.filter(isFresh);
     const tooOld   = unseen.filter(l => !isFresh(l));
     console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
 
-    const { date: today, hour, minute } = viennaDateHour();
-
     for (const l of toAlert) {
+      if (maxDaily !== null && alertsToday >= maxDaily) {
+        if (newLimitAlertSentDate !== today) {
+          try {
+            await bot.sendMessage(CHAT_ID,
+              `⚠️ Tageslimit von ${maxDaily} Alerts erreicht — weitere Alerts erst wieder morgen.`
+            );
+            newLimitAlertSentDate = today;
+            console.log('  Tageslimit erreicht.');
+          } catch {}
+        }
+        seen.add(l.id);
+        continue;
+      }
       try {
         await sendAlert(l);
         seen.add(l.id);
+        sent.add(l.id);
+        alertsToday++;
         newLastAlertDate = today;
+        const { date: ad, hour: ah, minute: am } = viennaDateHour();
+        const dateStr = `${ad} ${String(ah).padStart(2,'0')}:${String(am).padStart(2,'0')}`;
+        const vehicle = [l.make, l.model].filter(Boolean).join(' ') || l.description;
+        const price   = l.price !== null ? `€ ${l.price.toLocaleString('de-AT')}` : 'Preis auf Anfrage';
+        saveLastAlert(vehicle, price, dateStr);
         console.log(`  → Gesendet: ${l.description} (€ ${l.price})`);
       } catch (sendErr) {
         console.error(`  Telegram-Fehler: ${sendErr.message}`);
@@ -448,7 +506,8 @@ async function run() {
       }
     }
 
-    saveSeen(seen, newLastAlertDate, newLastHeartbeatDate);
+    saveSeen(seen, newLastAlertDate, newLastHeartbeatDate, alertsToday, today, newLimitAlertSentDate);
+    saveSent(sent);
   } catch (err) {
     console.error(`  Scraping-Fehler (nächster Versuch in 5 Min): ${err.message}`);
   }
@@ -464,11 +523,22 @@ async function run() {
   console.log(`URL:      ${buildSearchUrl()}`);
   console.log('Interval: alle 5 Minuten\n');
   await ensureBrowserState();
-  try {
-    await sendConfirmationAlert();
-    console.log('Bestätigungs-Alert gesendet.');
-  } catch (err) {
-    console.error(`Bestätigungs-Alert fehlgeschlagen: ${err.message}`);
+  const mode = getMode();
+  if (mode === 'resuming') {
+    setMode('running');
+    try {
+      await bot.sendMessage(CHAT_ID, `▶️ CaRadar fortgesetzt — Suche läuft wieder nach ${searchLabel()}.`);
+      console.log('Resume-Alert gesendet.');
+    } catch (err) {
+      console.error(`Resume-Alert fehlgeschlagen: ${err.message}`);
+    }
+  } else {
+    try {
+      await sendConfirmationAlert();
+      console.log('Bestätigungs-Alert gesendet.');
+    } catch (err) {
+      console.error(`Bestätigungs-Alert fehlgeschlagen: ${err.message}`);
+    }
   }
   await run();
   setInterval(run, INTERVAL);
