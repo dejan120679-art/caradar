@@ -20,8 +20,9 @@ const PORT            = 3000;
 const CONFIG_FILE     = path.join(__dirname, 'config.json');
 const SEEN_FILE       = path.join(__dirname, 'seen.json');
 const MODE_FILE       = path.join(__dirname, 'scraper-mode.json');
-const LAST_ALERT_FILE = path.join(__dirname, 'lastAlert.json');
-const LOG_OUT         = path.join(os.homedir(), '.pm2', 'logs', 'caradar-out.log');
+const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
+const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
+const LOG_OUT            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-out.log');
 const LOG_ERR         = path.join(os.homedir(), '.pm2', 'logs', 'caradar-error.log');
 
 function getMode() {
@@ -46,6 +47,14 @@ function getSearchLabel() {
     const price    = cfg.preisMax ? `≤ € ${cfg.preisMax.toLocaleString('de-AT')}` : '';
     return [vehicle, location, price].filter(Boolean).join(' · ');
   } catch { return ''; }
+}
+
+function getAlertsToday() {
+  try {
+    const raw   = JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'));
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Vienna' }).format(new Date());
+    return raw.alertsDate === today ? (raw.alertsToday || 0) : 0;
+  } catch { return 0; }
 }
 
 function sendTelegram(text) {
@@ -114,6 +123,8 @@ app.get('/api/status', (req, res) => {
       mode:        getMode(),
       lastAlert:   getLastAlert(),
       searchLabel: getSearchLabel(),
+      alertsToday: getAlertsToday(),
+      alertsMax:   (() => { try { return JSON.parse(fs.readFileSync(CONFIG_FILE,'utf8')).maxAlertsProTag || null; } catch { return null; } })(),
     });
   });
 });
@@ -145,6 +156,15 @@ app.post('/api/action', async (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ ok: true });
     });
+  }
+});
+
+app.get('/api/lastalertes', (req, res) => {
+  try {
+    const history = JSON.parse(fs.readFileSync(ALERT_HISTORY_FILE, 'utf8'));
+    res.json(Array.isArray(history) ? history : []);
+  } catch {
+    res.json([]);
   }
 });
 

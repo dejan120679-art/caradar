@@ -24,8 +24,9 @@ const TOKEN = process.env.TELEGRAM_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const SEEN_FILE       = path.join(__dirname, 'seen.json');
 const SENT_FILE       = path.join(__dirname, 'sent.json');
-const LAST_ALERT_FILE = path.join(__dirname, 'lastAlert.json');
-const MODE_FILE       = path.join(__dirname, 'scraper-mode.json');
+const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
+const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
+const MODE_FILE          = path.join(__dirname, 'scraper-mode.json');
 const STATE_FILE      = path.join(__dirname, 'browser-state.json');
 const MAX_SEEN   = 1000;
 
@@ -162,8 +163,14 @@ function saveSent(sentIds) {
   fs.writeFileSync(SENT_FILE, JSON.stringify({ ids: [...sentIds] }));
 }
 
-function saveLastAlert(vehicle, price, dateStr) {
-  fs.writeFileSync(LAST_ALERT_FILE, JSON.stringify({ vehicle, price, dateStr }));
+function saveLastAlert(vehicle, price, dateStr, ort) {
+  const entry = { vehicle, price, dateStr, ort: ort || '' };
+  fs.writeFileSync(LAST_ALERT_FILE, JSON.stringify(entry));
+  let history = [];
+  try { history = JSON.parse(fs.readFileSync(ALERT_HISTORY_FILE, 'utf8')); } catch {}
+  if (!Array.isArray(history)) history = [];
+  history.unshift(entry);
+  fs.writeFileSync(ALERT_HISTORY_FILE, JSON.stringify(history.slice(0, 5)));
 }
 
 function getMode() {
@@ -485,7 +492,7 @@ async function run() {
       const dateStr = `${ad} ${String(ah).padStart(2,'0')}:${String(am).padStart(2,'0')}`;
       const vehicle = [l.make, l.model].filter(Boolean).join(' ') || l.description;
       const price   = l.price !== null ? `€ ${l.price.toLocaleString('de-AT')}` : 'Preis auf Anfrage';
-      saveLastAlert(vehicle, price, dateStr);
+      saveLastAlert(vehicle, price, dateStr, l.district || l.location || '');
       console.log(`  → Gesendet: ${l.description} (€ ${l.price})`);
     } catch (sendErr) {
       console.error(`  Telegram-Fehler: ${sendErr.message}`);
