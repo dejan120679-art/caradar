@@ -1,0 +1,10 @@
+.env
+node_modules/
+user-config.json
+browser-state.json
+seen.json
+sent.json
+lastAlert.json
+alertHistory.json
+scraper-mode.json
+debug-condition.js

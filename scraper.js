@@ -21,7 +21,7 @@ function loadConfig() {
 let CONFIG = loadConfig();
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const USER_CONFIG_FILE   = path.join(__dirname, 'user-config.json');
 const SEEN_FILE       = path.join(__dirname, 'seen.json');
 const SENT_FILE       = path.join(__dirname, 'sent.json');
 const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
@@ -29,6 +29,14 @@ const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
 const MODE_FILE          = path.join(__dirname, 'scraper-mode.json');
 const STATE_FILE      = path.join(__dirname, 'browser-state.json');
 const MAX_SEEN   = 1000;
+
+function getChatId() {
+  try {
+    const uc = JSON.parse(fs.readFileSync(USER_CONFIG_FILE, 'utf8'));
+    if (uc.chatId) return uc.chatId;
+  } catch {}
+  return process.env.TELEGRAM_CHAT_ID || null;
+}
 
 const UA = 'CaRadar-Bot/1.0 (alert-service; contact: support@caradar.at)';
 
@@ -426,7 +434,7 @@ async function sendAlert(listing) {
     '⚠️ Bitte Inserat und Verkäufer vor dem Kauf sorgfältig prüfen. CaRadar haftet nicht für Inseratsinhalte.',
   ].filter(l => l !== null);
 
-  await bot.sendMessage(CHAT_ID, lines.join('\n'), { parse_mode: 'HTML' });
+  await bot.sendMessage(getChatId(), lines.join('\n'), { parse_mode: 'HTML' });
 }
 
 async function sendConfirmationAlert() {
@@ -436,7 +444,7 @@ async function sendConfirmationAlert() {
     ? `Preis bis ${CONFIG.preisMax.toLocaleString('de-AT')} €`
     : '';
   const parts = [vehicle, location, price].filter(Boolean).join(' · ');
-  await bot.sendMessage(CHAT_ID,
+  await bot.sendMessage(getChatId(),
     `✅ CaRadar aktiv — Suche läuft nach ${parts}. Ich benachrichtige dich sofort wenn ein passendes Inserat erscheint.`
   );
 }
@@ -468,7 +476,7 @@ async function run() {
     if (maxDaily !== null && alertsToday >= maxDaily) {
       if (newLimitAlertSentDate !== today) {
         try {
-          await bot.sendMessage(CHAT_ID,
+          await bot.sendMessage(getChatId(),
             `⚠️ Tageslimit von ${maxDaily} Alerts erreicht — weitere Alerts erst wieder morgen.`
           );
           newLimitAlertSentDate = today;
@@ -499,7 +507,7 @@ async function run() {
   // Tages-Heartbeat um 09:00 Uhr — nur wenn heute noch kein Alert und noch kein Heartbeat
   if (hour === 9 && minute < 5 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
     try {
-      await bot.sendMessage(CHAT_ID,
+      await bot.sendMessage(getChatId(),
         '✅ CaRadar läuft — heute noch keine neuen Inserate gefunden die deinen Kriterien entsprechen.'
       );
       newLastHeartbeatDate = today;
@@ -532,8 +540,8 @@ async function schedule() {
 }
 
 (async () => {
-  if (!TOKEN || !CHAT_ID) {
-    console.error('TELEGRAM_TOKEN oder TELEGRAM_CHAT_ID fehlt in .env!');
+  if (!TOKEN || !getChatId()) {
+    console.error('TELEGRAM_TOKEN fehlt in .env oder keine Telegram Chat-ID konfiguriert!');
     process.exit(1);
   }
   console.log('caradar gestartet');
@@ -545,7 +553,7 @@ async function schedule() {
   if (mode === 'resuming') {
     setMode('running');
     try {
-      await bot.sendMessage(CHAT_ID, `▶️ CaRadar fortgesetzt — Suche läuft wieder nach ${searchLabel()}.`);
+      await bot.sendMessage(getChatId(), `▶️ CaRadar fortgesetzt — Suche läuft wieder nach ${searchLabel()}.`);
       console.log('Resume-Alert gesendet.');
     } catch (err) {
       console.error(`Resume-Alert fehlgeschlagen: ${err.message}`);

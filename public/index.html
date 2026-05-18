@@ -235,6 +235,33 @@ input::placeholder { color: var(--muted); opacity: .65; }
 }
 .log-box:empty::before { content: 'Keine Logs verfügbar.'; color: var(--muted); }
 
+/* ── TELEGRAM CARD ──────────────────────────────────────────────────── */
+.tg-steps { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 20px; }
+.tg-step  { display: flex; align-items: flex-start; gap: 11px; font-size: .86rem; color: var(--muted2); line-height: 1.55; }
+.tg-num   {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(59,130,246,.13); color: var(--blue);
+  font-size: .72rem; font-weight: 700; display: grid; place-items: center;
+}
+.tg-step code {
+  background: rgba(255,255,255,.08); border-radius: 4px;
+  padding: 1px 6px; font-size: .82rem;
+  font-family: 'Consolas','Fira Code',monospace; color: var(--text);
+}
+.tg-input-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.tg-input-row input { flex: 1; min-width: 160px; }
+
+.tg-conf-row  { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tg-ok-icon   {
+  width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2);
+  display: grid; place-items: center; color: var(--green);
+}
+.tg-ok-body   { flex: 1; min-width: 0; }
+.tg-ok-label  { font-size: .7rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: .07em; }
+.tg-ok-id     { font-size: .85rem; color: var(--muted2); margin-top: 2px; }
+.tg-ok-actions{ display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* ── FOOTER ─────────────────────────────────────────────────────────── */
 footer {
   text-align: center; padding: 28px 0 20px;
@@ -281,6 +308,45 @@ footer a:hover { color: var(--text); }
     <span class="badge-text" id="statusText">Lädt…</span>
   </div>
 </header>
+
+<!-- TELEGRAM ONBOARDING -->
+<div class="card" id="telegramCard" style="display:none">
+
+  <div id="tgSetup">
+    <div class="card-header">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      <span class="card-title">Telegram-Benachrichtigungen einrichten</span>
+    </div>
+    <p class="card-sub">Um Alerts zu erhalten, verbinde deinen Telegram-Account mit CaRadar.</p>
+    <div class="tg-steps">
+      <div class="tg-step"><span class="tg-num">1</span><span>Öffne Telegram, suche <code>@CaRadarAlert_bot</code> und schreibe <code>Start</code></span></div>
+      <div class="tg-step"><span class="tg-num">2</span><span>Öffne <code>t.me/userinfobot</code> und schreibe <code>/start</code> — du erhältst deine numerische Chat-ID</span></div>
+      <div class="tg-step"><span class="tg-num">3</span><span>Trage deine Chat-ID unten ein, klicke <strong>Speichern</strong> und dann <strong>Test-Alert senden</strong></span></div>
+    </div>
+    <div class="tg-input-row">
+      <input type="text" id="telegramChatId" placeholder="Chat-ID eingeben…" inputmode="numeric">
+      <button class="btn btn-start" id="btnSaveChatId">Speichern</button>
+      <button class="btn btn-ghost" id="btnTestAlert">Test-Alert senden</button>
+    </div>
+  </div>
+
+  <div id="tgConfigured" style="display:none">
+    <div class="tg-conf-row">
+      <div class="tg-ok-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="tg-ok-body">
+        <div class="tg-ok-label">Telegram verbunden</div>
+        <div class="tg-ok-id" id="chatIdDisplay">Chat-ID: —</div>
+      </div>
+      <div class="tg-ok-actions">
+        <button class="btn btn-ghost" id="btnTestAlert2">Test-Alert senden</button>
+        <button class="btn btn-ghost" id="btnChangeChatId">Ändern</button>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <!-- SUCHPARAMETER -->
 <div class="card">
@@ -634,6 +700,64 @@ function clearForm() {
   toast('Formular geleert.', 'ok');
 }
 
+// ── TELEGRAM SETUP ───────────────────────────────────────────────────────────
+async function loadUserConfig() {
+  try {
+    const cfg = await fetch('/api/user-config').then(r => r.json());
+    const card       = document.getElementById('telegramCard');
+    const setup      = document.getElementById('tgSetup');
+    const configured = document.getElementById('tgConfigured');
+    card.style.display = '';
+    if (cfg && cfg.chatId) {
+      setup.style.display      = 'none';
+      configured.style.display = '';
+      document.getElementById('chatIdDisplay').textContent   = `Chat-ID: ${cfg.chatId}`;
+      document.getElementById('telegramChatId').value        = cfg.chatId;
+    } else {
+      setup.style.display      = '';
+      configured.style.display = 'none';
+    }
+  } catch {}
+}
+
+async function saveChatId() {
+  const chatId = document.getElementById('telegramChatId').value.trim();
+  if (!chatId) { toast('Bitte Chat-ID eingeben.', 'err'); return; }
+  try {
+    const r = await fetch('/api/user-config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId }),
+    });
+    const d = await r.json();
+    if (d.ok) { toast('Chat-ID gespeichert!', 'ok'); await loadUserConfig(); }
+    else toast('Fehler: ' + (d.error || 'unbekannt'), 'err');
+  } catch { toast('Netzwerkfehler', 'err'); }
+}
+
+async function sendTestAlert() {
+  const chatId = document.getElementById('telegramChatId').value.trim();
+  if (!chatId) { toast('Bitte zuerst Chat-ID eingeben.', 'err'); return; }
+  try {
+    const r = await fetch('/api/test-alert', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId }),
+    });
+    const d = await r.json();
+    if (d.ok) toast('Test-Alert gesendet — prüfe Telegram!', 'ok');
+    else toast('Fehler: ' + (d.error || 'unbekannt'), 'err');
+  } catch { toast('Netzwerkfehler', 'err'); }
+}
+
+document.getElementById('btnSaveChatId').addEventListener('click', saveChatId);
+document.getElementById('telegramChatId').addEventListener('keydown', e => { if (e.key === 'Enter') saveChatId(); });
+document.getElementById('btnTestAlert').addEventListener('click', sendTestAlert);
+document.getElementById('btnTestAlert2').addEventListener('click', sendTestAlert);
+document.getElementById('btnChangeChatId').addEventListener('click', () => {
+  document.getElementById('tgSetup').style.display      = '';
+  document.getElementById('tgConfigured').style.display = 'none';
+  document.getElementById('telegramChatId').focus();
+});
+
 // ── STATUS POLLING ────────────────────────────────────────────────────────────
 async function pollStatus() {
   try {
@@ -759,6 +883,7 @@ document.getElementById('btnResume').addEventListener('click', async () => {
 document.getElementById('btnClear').addEventListener('click', clearForm);
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+loadUserConfig();
 loadConfig();
 pollStatus();
 loadAlertHistory();

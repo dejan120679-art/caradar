@@ -24,7 +24,8 @@ const MODE_FILE       = path.join(__dirname, 'scraper-mode.json');
 const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
 const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
 const LOG_OUT            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-out.log');
-const LOG_ERR         = path.join(os.homedir(), '.pm2', 'logs', 'caradar-error.log');
+const LOG_ERR            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-error.log');
+const USER_CONFIG_FILE   = path.join(__dirname, 'user-config.json');
 
 const PASSWORD    = 'caradar777';
 const SECRET      = 'caradar-session-secret-x9k2m';
@@ -72,10 +73,18 @@ function getAlertsToday() {
   } catch { return 0; }
 }
 
-function sendTelegram(text) {
+function getEffectiveChatId() {
+  try {
+    const uc = JSON.parse(fs.readFileSync(USER_CONFIG_FILE, 'utf8'));
+    if (uc.chatId) return uc.chatId;
+  } catch {}
+  return process.env.TELEGRAM_CHAT_ID || null;
+}
+
+function sendTelegram(text, chatIdOverride) {
   return new Promise((resolve, reject) => {
     const token  = process.env.TELEGRAM_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const chatId = chatIdOverride || getEffectiveChatId();
     if (!token || !chatId) return resolve();
     const body = JSON.stringify({ chat_id: chatId, text });
     const req  = https.request({
@@ -130,6 +139,28 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Protected API routes ──────────────────────────────────────────────────────
+
+app.get('/api/user-config', (req, res) => {
+  try { res.json(JSON.parse(fs.readFileSync(USER_CONFIG_FILE, 'utf8'))); }
+  catch { res.json({ chatId: null }); }
+});
+
+app.post('/api/user-config', (req, res) => {
+  const { chatId } = req.body;
+  fs.writeFileSync(USER_CONFIG_FILE, JSON.stringify({ chatId: chatId || null }, null, 2));
+  res.json({ ok: true });
+});
+
+app.post('/api/test-alert', async (req, res) => {
+  const chatId = req.body.chatId || getEffectiveChatId();
+  if (!chatId) return res.status(400).json({ error: 'Keine Chat-ID konfiguriert' });
+  try {
+    await sendTelegram('✅ CaRadar Test — Verbindung erfolgreich!', chatId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get('/api/config', (req, res) => {
   try {
