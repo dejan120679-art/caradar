@@ -35,10 +35,26 @@ const bot = new TelegramBot(TOKEN);
 
 // Mapping: Config-Zustand → Teilstring im willhaben CONDITION_RESOLVED Attribut
 const CONDITION_MAP = {
-  gebraucht:   'gebraucht',
-  neu:         'neu',
-  beschaedigt: 'beschädigt',
-  unfallwagen: 'unfall',
+  gebraucht:     'gebraucht',
+  jahreswagen:   'jahreswagen',
+  neu:           'neu',
+  oldtimer:      'oldtimer',
+  tageszulassung:'tageszulassung',
+  beschaedigt:   'unfall',   // CONDITION_RESOLVED liefert "Unfallwagen" für beide
+  unfallwagen:   'unfall',
+  vorführwagen:  'vorführwagen',
+};
+
+// Mapping: Config-Zustand → MOTOR_CONDITION URL-Parameter (willhaben-Codes)
+const CONDITION_CODE_MAP = {
+  gebraucht:     '20',
+  jahreswagen:   '50',
+  neu:           '10',
+  oldtimer:      '93',
+  tageszulassung:'91',
+  beschaedigt:   '30',
+  unfallwagen:   '30',
+  vorführwagen:  '40',
 };
 
 // ─── URL-Aufbau ───────────────────────────────────────────────────────────────
@@ -63,6 +79,11 @@ function buildSearchUrl() {
   if (CONFIG.baujahrVon) q.set('YEAR_MODEL_FROM', String(CONFIG.baujahrVon));
   if (CONFIG.baujahrBis) q.set('YEAR_MODEL_TO',   String(CONFIG.baujahrBis));
 
+  if (CONFIG.zustand && CONFIG.zustand.length > 0) {
+    const codes = [...new Set(CONFIG.zustand.map(z => CONDITION_CODE_MAP[z]).filter(Boolean))];
+    codes.forEach(c => q.append('MOTOR_CONDITION', c));
+  }
+
   // Pfad-basiertes Make/Model-Filtering — willhaben-Slugs folgen dem Muster
   // "{marke}-gebrauchtwagen/{marke}-{modell}-gebrauchtwagen"
   let subPath;
@@ -79,15 +100,44 @@ function buildSearchUrl() {
   return `https://www.willhaben.at/iad/gebrauchtwagen/auto/${subPath}/?${q.toString()}`;
 }
 
-// ─── Persistenz ───────────────────────────────────────────────────────────────
+// ─── Zeitzone ────────────────────────────────────────────────────────────────
 
-function loadSeen() {
-  try { return new Set(JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'))); }
-  catch { return new Set(); }
+function viennaDateHour() {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vienna',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date()).reduce((acc, x) => { acc[x.type] = x.value; return acc; }, {});
+  return {
+    date:   `${p.year}-${p.month}-${p.day}`,
+    hour:   parseInt(p.hour),
+    minute: parseInt(p.minute),
+  };
 }
 
-function saveSeen(seen) {
-  fs.writeFileSync(SEEN_FILE, JSON.stringify([...seen].slice(-MAX_SEEN)));
+// ─── Persistenz ───────────────────────────────────────────────────────────────
+
+
+function loadSeen() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'));
+    const ids = Array.isArray(raw) ? raw : (raw.ids || []);
+    return {
+      ids:               new Set(ids),
+      lastAlertDate:     raw.lastAlertDate     || null,
+      lastHeartbeatDate: raw.lastHeartbeatDate || null,
+    };
+  } catch {
+    return { ids: new Set(), lastAlertDate: null, lastHeartbeatDate: null };
+  }
+}
+
+function saveSeen(ids, lastAlertDate, lastHeartbeatDate) {
+  fs.writeFileSync(SEEN_FILE, JSON.stringify({
+    ids: [...ids].slice(-MAX_SEEN),
+    lastAlertDate,
+    lastHeartbeatDate,
+  }));
 }
 
 // ─── Browser-State (Cookies einmalig akzeptieren) ─────────────────────────────
@@ -116,14 +166,13 @@ async function ensureBrowserState() {
 async function scrapeListings() {
   const searchUrl = buildSearchUrl();
   const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext({
-    userAgent: UA,
-    locale: 'de-AT',
-    storageState: fs.existsSync(STATE_FILE) ? STATE_FILE : undefined,
-  });
-  const page = await ctx.newPage();
-
   try {
+    const ctx = await browser.newContext({
+      userAgent: UA,
+      locale: 'de-AT',
+      storageState: fs.existsSync(STATE_FILE) ? STATE_FILE : undefined,
+    });
+    const page = await ctx.newPage();
     await page.goto(searchUrl, { waitUntil: 'load', timeout: 30000 });
     await page.waitForTimeout(3000);
 
@@ -147,6 +196,16 @@ async function scrapeListings() {
       return ads.map(ad => {
         const attrs = ad.attributes?.attribute || [];
         const get   = n => attrs.find(a => a.name === n)?.values?.[0] ?? null;
+        const info  = ad.advertiserInfo || {};
+
+        const sellerTypeRaw = get('SELLER_TYPE_RESOLVED') || get('SELLER_TYPE') || null;
+        let sellerType = null;
+        if (sellerTypeRaw !== null) {
+          sellerType = sellerTypeRaw.toLowerCase().includes('privat') ? 'privat' : 'händler';
+        } else if (info.isPrivate !== undefined) {
+          sellerType = info.isPrivate ? 'privat' : 'händler';
+        }
+
         return {
           id:          String(ad.id),
           description: (ad.description || '').trim(),
@@ -163,6 +222,8 @@ async function scrapeListings() {
           condition:   (get('CONDITION_RESOLVED')   || '').toLowerCase(),
           fuel:        (get('ENGINE/FUEL_RESOLVED')    || '').toLowerCase(),
           transmission:(get('TRANSMISSION_RESOLVED') || '').toLowerCase(),
+          sellerType,
+          phone:       info.phone || info.phoneNumber || (ad.contactData || {}).phone || null,
         };
       });
     });
@@ -177,13 +238,14 @@ async function scrapeListings() {
 
 function matchesConfig(l) {
   if (CONFIG.marke) {
-    const m = CONFIG.marke.toLowerCase();
-    if (!l.make.toLowerCase().includes(m))
+    const m = CONFIG.marke.toLowerCase().replace(/[-\s]+/g, '');
+    if (!l.make.toLowerCase().replace(/[-\s]+/g, '').includes(m))
       return false;
   }
   if (CONFIG.modell) {
-    const m = CONFIG.modell.toLowerCase();
-    if (!l.model.toLowerCase().includes(m) && !l.description.toLowerCase().includes(m))
+    const m = CONFIG.modell.toLowerCase().replace(/[-\s]+/g, '');
+    if (!l.model.toLowerCase().replace(/[-\s]+/g, '').includes(m) &&
+        !l.description.toLowerCase().replace(/[-\s]+/g, '').includes(m))
       return false;
   }
   if (CONFIG.preisMin  !== null && l.price   !== null && l.price   < CONFIG.preisMin)  return false;
@@ -201,7 +263,7 @@ function matchesConfig(l) {
     if (!ortMatch) return false;
   }
 
-  if (CONFIG.zustand.length > 0) {
+  if ((CONFIG.zustand || []).length > 0) {
     const hit = CONFIG.zustand.some(z => {
       const target = CONDITION_MAP[z] ?? z.toLowerCase();
       return l.condition.includes(target);
@@ -225,7 +287,20 @@ function matchesConfig(l) {
     if (Date.now() - ms > CONFIG.maxAlterStunden * 60 * 60 * 1000) return false;
   }
 
+  if (CONFIG.minAlterStunden) {
+    if (l.published === null) return false;
+    const ms = l.published > 1e12 ? l.published : l.published * 1000;
+    if (Date.now() - ms < CONFIG.minAlterStunden * 60 * 60 * 1000) return false;
+  }
+
   return true;
+}
+
+function isFresh(listing) {
+  if (!CONFIG.maxAlterStunden) return true; // kein Limit gesetzt → immer senden
+  if (!listing.published) return true;
+  const ms = listing.published > 1e12 ? listing.published : listing.published * 1000;
+  return Date.now() - ms < CONFIG.maxAlterStunden * 60 * 60 * 1000;
 }
 
 // ─── Telegram ─────────────────────────────────────────────────────────────────
@@ -273,13 +348,20 @@ async function sendAlert(listing) {
   const details = [
     listing.year             && `Baujahr ${listing.year}`,
     listing.mileage !== null && `${listing.mileage.toLocaleString('de-AT')} km`,
-    listing.location,
   ].filter(Boolean).join(' · ');
 
   const techDetails = [
     listing.fuel         && listing.fuel.charAt(0).toUpperCase() + listing.fuel.slice(1),
     listing.transmission && listing.transmission.charAt(0).toUpperCase() + listing.transmission.slice(1),
   ].filter(Boolean).join(' · ');
+
+  const locationStr = listing.district || listing.location || null;
+
+  const sellerLine = listing.sellerType === 'privat'
+    ? '👤 Privat'
+    : listing.sellerType === 'händler'
+      ? '🏢 Händler'
+      : null;
 
   const header = pub?.isNew
     ? `🔴 NEU – <b>${escHtml(searchLabel())}!</b>`
@@ -290,14 +372,31 @@ async function sendAlert(listing) {
     '',
     `📌 <b>${escHtml(listing.description)}</b>`,
     `💶 ${escHtml(priceStr)}`,
-    details     ? `📍 ${escHtml(details)}`     : null,
-    techDetails ? `⚙️ ${escHtml(techDetails)}` : null,
-    pub         ? `🕐 ${escHtml(pub.dateStr)}`  : null,
+    details       ? `🔧 ${escHtml(details)}`      : null,
+    techDetails   ? `⚙️ ${escHtml(techDetails)}`  : null,
+    locationStr   ? `📍 ${escHtml(locationStr)}`  : null,
+    sellerLine,
+    listing.phone ? `📞 ${escHtml(listing.phone)}` : null,
+    pub           ? `🕐 ${escHtml(pub.dateStr)}`   : null,
     '',
     `🔗 <a href="${url}">Inserat öffnen</a>`,
+    '',
+    '⚠️ Bitte Inserat und Verkäufer vor dem Kauf sorgfältig prüfen. CaRadar haftet nicht für Inseratsinhalte.',
   ].filter(l => l !== null);
 
   await bot.sendMessage(CHAT_ID, lines.join('\n'), { parse_mode: 'HTML' });
+}
+
+async function sendConfirmationAlert() {
+  const vehicle  = [CONFIG.marke, CONFIG.modell].filter(Boolean).join(' ') || 'Alle Fahrzeuge';
+  const location = CONFIG.ort || 'Österreich';
+  const price    = CONFIG.preisMax
+    ? `Preis bis ${CONFIG.preisMax.toLocaleString('de-AT')} €`
+    : '';
+  const parts = [vehicle, location, price].filter(Boolean).join(' · ');
+  await bot.sendMessage(CHAT_ID,
+    `✅ CaRadar aktiv — Suche läuft nach ${parts}. Ich benachrichtige dich sofort wenn ein passendes Inserat erscheint.`
+  );
 }
 
 // ─── Haupt-Loop ───────────────────────────────────────────────────────────────
@@ -305,24 +404,49 @@ async function sendAlert(listing) {
 async function run() {
   CONFIG = loadConfig();
   const ts = new Date().toLocaleTimeString('de-AT');
-  console.log(`[${ts}] Suche: ${searchLabel()}`);
-  const seen = loadSeen();
+  console.log(`[${ts}] Suche: ${searchLabel()} | URL: ${buildSearchUrl()}`);
+
+  const { ids: seen, lastAlertDate, lastHeartbeatDate } = loadSeen();
+  let newLastAlertDate     = lastAlertDate;
+  let newLastHeartbeatDate = lastHeartbeatDate;
+
   try {
     const listings = await scrapeListings();
-    const fresh    = listings.filter(l => !seen.has(l.id));
-    console.log(`  ${listings.length} Treffer | ${fresh.length} neu`);
-    for (const l of fresh) {
+    const unseen   = listings.filter(l => !seen.has(l.id));
+    const toAlert  = unseen.filter(isFresh);
+    const tooOld   = unseen.filter(l => !isFresh(l));
+    console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
+
+    const { date: today, hour, minute } = viennaDateHour();
+
+    for (const l of toAlert) {
       try {
         await sendAlert(l);
         seen.add(l.id);
+        newLastAlertDate = today;
         console.log(`  → Gesendet: ${l.description} (€ ${l.price})`);
       } catch (sendErr) {
         console.error(`  Telegram-Fehler: ${sendErr.message}`);
       }
     }
-    saveSeen(seen);
+    tooOld.forEach(l => seen.add(l.id));
+
+    // Tages-Heartbeat um 09:00 Uhr — nur wenn heute noch kein Alert und noch kein Heartbeat
+    if (hour === 9 && minute < 5 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
+      try {
+        await bot.sendMessage(CHAT_ID,
+          '✅ CaRadar läuft — heute noch keine neuen Inserate gefunden die deinen Kriterien entsprechen.'
+        );
+        newLastHeartbeatDate = today;
+        console.log('  Tages-Heartbeat gesendet.');
+      } catch (hbErr) {
+        console.error(`  Heartbeat Telegram-Fehler: ${hbErr.message}`);
+      }
+    }
+
+    saveSeen(seen, newLastAlertDate, newLastHeartbeatDate);
   } catch (err) {
-    console.error(`  Fehler: ${err.message}`);
+    console.error(`  Scraping-Fehler (nächster Versuch in 5 Min): ${err.message}`);
   }
 }
 
@@ -336,6 +460,12 @@ async function run() {
   console.log(`URL:      ${buildSearchUrl()}`);
   console.log('Interval: alle 5 Minuten\n');
   await ensureBrowserState();
+  try {
+    await sendConfirmationAlert();
+    console.log('Bestätigungs-Alert gesendet.');
+  } catch (err) {
+    console.error(`Bestätigungs-Alert fehlgeschlagen: ${err.message}`);
+  }
   await run();
   setInterval(run, INTERVAL);
 })();
