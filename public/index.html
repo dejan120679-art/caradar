@@ -169,6 +169,15 @@ input::placeholder { color: var(--muted); opacity: .65; }
 .chk input:checked ~ .chk-box::after { display: block; }
 .chk:has(input:checked) { border-color: rgba(59,130,246,.4); background: rgba(59,130,246,.08); color: #93c5fd; }
 
+/* ── PLZ ROW ────────────────────────────────────────────────────────── */
+.plz-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.oder-badge {
+  font-size: .68rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; flex-shrink: 0;
+}
+.plz-row input  { flex: 1; min-width: 0; }
+.plz-row select { min-width: 110px; flex-shrink: 0; }
+
 /* ── DIVIDER ────────────────────────────────────────────────────────── */
 .divider { height: 1px; background: rgba(255,255,255,.05); margin: 16px 0; }
 
@@ -451,6 +460,19 @@ footer a:hover { color: var(--text); }
           <option>Steiermark</option><option>Tirol</option><option>Salzburg</option>
           <option>Kärnten</option><option>Vorarlberg</option><option>Burgenland</option>
         </select>
+        <div class="plz-row">
+          <span class="oder-badge">oder</span>
+          <input type="text" id="plz" name="plz" placeholder="PLZ, z.B. 2340" inputmode="numeric" maxlength="10">
+          <select id="radiusKm" name="radiusKm">
+            <option value="">Umkreis</option>
+            <option value="10">10 km</option>
+            <option value="25">25 km</option>
+            <option value="50">50 km</option>
+            <option value="100">100 km</option>
+            <option value="150">150 km</option>
+            <option value="200">200 km</option>
+          </select>
+        </div>
       </div>
       <div class="field">
         <div class="lbl">Fahrzeugzustand</div>
@@ -668,6 +690,8 @@ async function loadConfig() {
     setVal('baujahrVon',      cfg.baujahrVon      ?? '');
     setVal('baujahrBis',      cfg.baujahrBis      ?? '');
     setVal('ort',             cfg.ort             || '');
+    setVal('plz',             cfg.plz             || '');
+    setVal('radiusKm',        cfg.radiusKm        ?? '');
     const alterVal = cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : '';
     const alterRadio = document.querySelector(`input[name="alterFilter"][value="${alterVal}"]`);
     if (alterRadio) alterRadio.checked = true;
@@ -695,7 +719,8 @@ function readForm() {
     baujahrVon:      num('baujahrVon'),
     baujahrBis:      num('baujahrBis'),
     ort:             str('ort'),
-    radiusKm:        null,
+    plz:             str('plz'),
+    radiusKm:        num('radiusKm'),
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
     kraftstoff:      str('kraftstoff') ? [str('kraftstoff')] : [],
     getriebe:        str('getriebe')   ? [str('getriebe')]   : [],
@@ -707,10 +732,10 @@ function readForm() {
 function clearForm() {
   document.getElementById('marke').value = '';
   populateModels();
-  ['zusatz','preisMin','preisMax','kmMax','maxAlertsProTag'].forEach(id => {
+  ['zusatz','preisMin','preisMax','kmMax','maxAlertsProTag','plz'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['baujahrVon','baujahrBis','ort','kraftstoff','getriebe'].forEach(id => {
+  ['baujahrVon','baujahrBis','ort','kraftstoff','getriebe','radiusKm'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -765,6 +790,19 @@ async function sendTestAlert() {
     else toast('Fehler: ' + (d.error || 'unbekannt'), 'err');
   } catch { toast('Netzwerkfehler', 'err'); }
 }
+
+// Ort ↔ PLZ mutual exclusivity
+document.getElementById('ort').addEventListener('change', () => {
+  if (document.getElementById('ort').value) {
+    document.getElementById('plz').value = '';
+    document.getElementById('radiusKm').value = '';
+  }
+});
+document.getElementById('plz').addEventListener('input', () => {
+  if (document.getElementById('plz').value.trim()) {
+    document.getElementById('ort').value = '';
+  }
+});
 
 document.getElementById('btnSaveChatId').addEventListener('click', saveChatId);
 document.getElementById('telegramChatId').addEventListener('keydown', e => { if (e.key === 'Enter') saveChatId(); });

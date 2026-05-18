@@ -59,7 +59,9 @@ function getSearchLabel() {
   try {
     const cfg      = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
     const vehicle  = [cfg.marke, cfg.modell, cfg.zusatz].filter(Boolean).join(' ') || 'Fahrzeug';
-    const location = cfg.ort || 'Österreich';
+    const location = (cfg.plz && cfg.radiusKm)
+      ? `${cfg.plz} +${cfg.radiusKm} km`
+      : (cfg.ort || 'Österreich');
     const price    = cfg.preisMax ? `≤ € ${cfg.preisMax.toLocaleString('de-AT')}` : '';
     return [vehicle, location, price].filter(Boolean).join(' · ');
   } catch { return ''; }

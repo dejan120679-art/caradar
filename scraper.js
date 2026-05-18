@@ -13,7 +13,7 @@ function loadConfig() {
     return {
       marke: '', modell: '', zusatz: '', preisMin: null, preisMax: null,
       kmMax: null, baujahrVon: null, baujahrBis: null,
-      ort: '', radiusKm: null, zustand: [],
+      ort: '', plz: '', radiusKm: null, zustand: [],
     };
   }
 }
@@ -95,6 +95,11 @@ function buildSearchUrl() {
   if (CONFIG.zustand && CONFIG.zustand.length > 0) {
     const codes = [...new Set(CONFIG.zustand.map(z => CONDITION_CODE_MAP[z]).filter(Boolean))];
     codes.forEach(c => q.append('MOTOR_CONDITION', c));
+  }
+
+  if (CONFIG.plz && CONFIG.radiusKm) {
+    q.set('areaId', String(CONFIG.plz));
+    q.set('areaSizeInM', String(CONFIG.radiusKm * 1000));
   }
 
   // Pfad-basiertes Make/Model-Filtering — willhaben-Slugs folgen dem Muster
@@ -310,7 +315,7 @@ function matchesConfig(l) {
   if (CONFIG.baujahrVon        && l.year && Number(l.year) < CONFIG.baujahrVon)        return false;
   if (CONFIG.baujahrBis        && l.year && Number(l.year) > CONFIG.baujahrBis)        return false;
 
-  if (CONFIG.ort) {
+  if (CONFIG.ort && !(CONFIG.plz && CONFIG.radiusKm)) {
     const o = CONFIG.ort.toLowerCase();
     const ortMatch =
       l.state.toLowerCase().includes(o) ||
@@ -378,7 +383,9 @@ function formatPublished(published) {
 
 function searchLabel() {
   const vehicle  = [CONFIG.marke, CONFIG.modell, CONFIG.zusatz].filter(Boolean).join(' ') || 'Fahrzeug';
-  const location = CONFIG.ort || 'Österreich';
+  const location = (CONFIG.plz && CONFIG.radiusKm)
+    ? `${CONFIG.plz} +${CONFIG.radiusKm} km`
+    : (CONFIG.ort || 'Österreich');
   const price    = CONFIG.preisMax
     ? `≤ € ${CONFIG.preisMax.toLocaleString('de-AT')}`
     : '';
