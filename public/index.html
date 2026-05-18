@@ -139,7 +139,7 @@ input::placeholder { color: var(--muted); opacity: .65; }
   transition: border-color .2s, background .2s, color .2s; user-select: none;
 }
 .chk:hover { border-color: rgba(59,130,246,.4); color: var(--text); }
-.chk input[type="checkbox"] { display: none; }
+.chk input[type="checkbox"], .chk input[type="radio"] { display: none; }
 .chk-box {
   width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,.15);
   border-radius: 4px; display: grid; place-items: center;
@@ -234,6 +234,15 @@ input::placeholder { color: var(--muted); opacity: .65; }
   line-height: 1.7; margin-top: 13px; white-space: pre-wrap; word-break: break-all;
 }
 .log-box:empty::before { content: 'Keine Logs verfügbar.'; color: var(--muted); }
+
+/* ── FOOTER ─────────────────────────────────────────────────────────── */
+footer {
+  text-align: center; padding: 28px 0 20px;
+  font-size: .76rem; color: var(--muted);
+  border-top: 1px solid rgba(255,255,255,.05); margin-top: 8px;
+}
+footer a { color: var(--muted2); text-decoration: none; }
+footer a:hover { color: var(--text); }
 
 /* ── TOAST ──────────────────────────────────────────────────────────── */
 #toast {
@@ -402,24 +411,13 @@ input::placeholder { color: var(--muted); opacity: .65; }
     <div class="divider"></div>
 
     <!-- Inseratsalter -->
-    <div class="row c2">
-      <div class="field">
-        <div class="lbl">Inseratsalter — jünger als</div>
-        <select id="maxAlterStunden" name="maxAlterStunden">
-          <option value="">Kein Limit</option>
-          <option value="6">6 Stunden</option><option value="24">24 Stunden</option>
-          <option value="48">2 Tage</option><option value="72">3 Tage</option>
-          <option value="168">7 Tage</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Inseratsalter — älter als</div>
-        <select id="minAlterStunden" name="minAlterStunden">
-          <option value="">Kein Limit</option>
-          <option value="24">1 Tag</option><option value="48">2 Tage</option>
-          <option value="72">3 Tage</option><option value="168">7 Tage</option>
-          <option value="336">14 Tage</option><option value="720">30 Tage</option>
-        </select>
+    <div class="field">
+      <div class="lbl">Inseratsalter</div>
+      <div class="checks">
+        <label class="chk"><input type="radio" name="alterFilter" value="" checked><span class="chk-box"></span>Nur neue</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="1"><span class="chk-box"></span>Bis 1 Stunde</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="24"><span class="chk-box"></span>Bis 1 Tag</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="168"><span class="chk-box"></span>Bis 1 Woche</label>
       </div>
     </div>
 
@@ -489,6 +487,7 @@ input::placeholder { color: var(--muted); opacity: .65; }
   <div class="log-box" id="logBox"></div>
 </div>
 
+  <footer>© 2026 CaRadar &nbsp;·&nbsp; <a href="/impressum">Impressum</a> &nbsp;·&nbsp; <a href="/datenschutz">Datenschutz</a></footer>
 </div><!-- /page -->
 <div id="toast"></div>
 
@@ -585,8 +584,10 @@ async function loadConfig() {
     setVal('baujahrVon',      cfg.baujahrVon      ?? '');
     setVal('baujahrBis',      cfg.baujahrBis      ?? '');
     setVal('ort',             cfg.ort             || '');
-    setVal('maxAlterStunden', cfg.maxAlterStunden ?? '');
-    setVal('minAlterStunden', cfg.minAlterStunden ?? '');
+    const alterVal = cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : '';
+    const alterRadio = document.querySelector(`input[name="alterFilter"][value="${alterVal}"]`);
+    if (alterRadio) alterRadio.checked = true;
+    else document.querySelector('input[name="alterFilter"][value=""]').checked = true;
     setVal('maxAlertsProTag', cfg.maxAlertsProTag ?? '');
     setVal('kraftstoff',      (cfg.kraftstoff || [])[0] || '');
     setVal('getriebe',        (cfg.getriebe   || [])[0] || '');
@@ -614,8 +615,7 @@ function readForm() {
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
     kraftstoff:      str('kraftstoff') ? [str('kraftstoff')] : [],
     getriebe:        str('getriebe')   ? [str('getriebe')]   : [],
-    maxAlterStunden: num('maxAlterStunden'),
-    minAlterStunden: num('minAlterStunden'),
+    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return v ? Number(v) : null; })(),
     maxAlertsProTag: num('maxAlertsProTag'),
   };
 }
@@ -626,10 +626,11 @@ function clearForm() {
   ['zusatz','preisMin','preisMax','kmMax','maxAlertsProTag'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['baujahrVon','baujahrBis','ort','kraftstoff','getriebe','maxAlterStunden','minAlterStunden'].forEach(id => {
+  ['baujahrVon','baujahrBis','ort','kraftstoff','getriebe'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  document.querySelector('input[name="alterFilter"][value=""]').checked = true;
   toast('Formular geleert.', 'ok');
 }
 

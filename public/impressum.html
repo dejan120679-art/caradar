@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impressum — CaRadar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --card: #1a1f2e; --border: rgba(59,130,246,.14);
+  --blue: #3b82f6; --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8; --r: 14px;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif; min-height: 100vh;
+  background-image: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(59,130,246,.07) 0%, transparent 60%);
+}
+.page { max-width: 720px; margin: 0 auto; padding: 0 20px 60px; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0 28px; border-bottom: 1px solid rgba(255,255,255,.05); margin-bottom: 36px; }
+.logo-wrap { display: flex; align-items: center; gap: 12px; }
+.logo-text { font-size: 1.55rem; font-weight: 800; letter-spacing: -.5px; }
+.logo-text .w { color: #fff; } .logo-text .b { color: var(--blue); }
+a.back { color: var(--muted2); font-size: .84rem; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+a.back:hover { color: var(--text); }
+.card {
+  background: rgba(26,31,46,.75); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 32px 36px;
+  box-shadow: 0 4px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
+}
+h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 24px; }
+h2 { font-size: .88rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .07em; margin: 24px 0 8px; }
+p { font-size: .9rem; line-height: 1.7; color: var(--muted2); }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+footer { text-align: center; padding: 28px 0 0; font-size: .76rem; color: var(--muted); border-top: 1px solid rgba(255,255,255,.05); margin-top: 24px; }
+footer a { color: var(--muted2); text-decoration: none; } footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <div class="logo-wrap">
+    <svg width="52" height="26" viewBox="0 0 78 38" fill="none">
+      <path d="M3 27 L3 21 L13 14 L28 12 L46 12 L55 17 L59 21 L59 27 Z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+      <circle cx="17" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <circle cx="45" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <path d="M63 19 Q69 23 63 29" stroke="#3b82f6" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+      <path d="M66 15 Q75 23 66 33" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
+      <path d="M69 11 Q78 23 69 37" stroke="#3b82f6" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".3"/>
+    </svg>
+    <div class="logo-text"><span class="w">Ca</span><span class="b">Radar</span></div>
+  </div>
+  <a class="back" href="/">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Zurück
+  </a>
+</header>
+
+<div class="card">
+  <h1>Impressum</h1>
+
+  <h2>Angaben gemäß § 5 ECG</h2>
+  <p>
+    Dejan Mladenovic<br>
+    Anningerstraße 26/9/3<br>
+    2340 Mödling<br>
+    Österreich
+  </p>
+
+  <h2>Kontakt</h2>
+  <p>
+    E-Mail: <a href="mailto:dejan120679@gmail.com">dejan120679@gmail.com</a>
+  </p>
+
+  <h2>Haftungsausschluss</h2>
+  <p>
+    CaRadar ist ein privater Alert-Dienst, der öffentlich zugängliche Inserate auf willhaben.at aggregiert und Benachrichtigungen versendet. Für die Richtigkeit, Vollständigkeit und Aktualität der angezeigten Inserate wird keine Haftung übernommen. Die Inhalte der verlinkten Inserate liegen ausschließlich im Verantwortungsbereich der jeweiligen Anbieter.
+  </p>
+</div>
+
+<footer>© 2026 CaRadar &nbsp;·&nbsp; <a href="/impressum">Impressum</a> &nbsp;·&nbsp; <a href="/datenschutz">Datenschutz</a></footer>
+</div>
+</body>
+</html>

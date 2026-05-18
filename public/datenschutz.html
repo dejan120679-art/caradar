@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Datenschutz — CaRadar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --border: rgba(59,130,246,.14);
+  --blue: #3b82f6; --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8; --r: 14px;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif; min-height: 100vh;
+  background-image: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(59,130,246,.07) 0%, transparent 60%);
+}
+.page { max-width: 720px; margin: 0 auto; padding: 0 20px 60px; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0 28px; border-bottom: 1px solid rgba(255,255,255,.05); margin-bottom: 36px; }
+.logo-wrap { display: flex; align-items: center; gap: 12px; }
+.logo-text { font-size: 1.55rem; font-weight: 800; letter-spacing: -.5px; }
+.logo-text .w { color: #fff; } .logo-text .b { color: var(--blue); }
+a.back { color: var(--muted2); font-size: .84rem; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+a.back:hover { color: var(--text); }
+.card {
+  background: rgba(26,31,46,.75); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 32px 36px;
+  box-shadow: 0 4px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
+}
+h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 24px; }
+h2 { font-size: .88rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .07em; margin: 28px 0 8px; }
+p, li { font-size: .9rem; line-height: 1.75; color: var(--muted2); }
+ul { padding-left: 20px; margin-top: 6px; }
+li { margin-bottom: 4px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+footer { text-align: center; padding: 28px 0 0; font-size: .76rem; color: var(--muted); border-top: 1px solid rgba(255,255,255,.05); margin-top: 24px; }
+footer a { color: var(--muted2); text-decoration: none; } footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <div class="logo-wrap">
+    <svg width="52" height="26" viewBox="0 0 78 38" fill="none">
+      <path d="M3 27 L3 21 L13 14 L28 12 L46 12 L55 17 L59 21 L59 27 Z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+      <circle cx="17" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <circle cx="45" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <path d="M63 19 Q69 23 63 29" stroke="#3b82f6" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+      <path d="M66 15 Q75 23 66 33" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
+      <path d="M69 11 Q78 23 69 37" stroke="#3b82f6" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".3"/>
+    </svg>
+    <div class="logo-text"><span class="w">Ca</span><span class="b">Radar</span></div>
+  </div>
+  <a class="back" href="/">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Zurück
+  </a>
+</header>
+
+<div class="card">
+  <h1>Datenschutzerklärung</h1>
+
+  <h2>1. Verantwortlicher</h2>
+  <p>
+    Dejan Mladenovic<br>
+    Anningerstraße 26/9/3, 2340 Mödling, Österreich<br>
+    E-Mail: <a href="mailto:dejan120679@gmail.com">dejan120679@gmail.com</a>
+  </p>
+
+  <h2>2. Zweck der Datenverarbeitung</h2>
+  <p>
+    CaRadar ist ein privater Fahrzeug-Alert-Dienst. Der Dienst überwacht öffentlich zugängliche Fahrzeuginserate auf willhaben.at anhand benutzerdefinierter Suchkriterien und sendet bei passenden Treffern eine Benachrichtigung über Telegram.
+  </p>
+
+  <h2>3. Verarbeitete Daten</h2>
+  <ul>
+    <li>Suchparameter (Marke, Modell, Preislimit, Region u. a.), die vom Nutzer im Interface eingegeben werden</li>
+    <li>Telegram-Chat-ID und Bot-Token, die zur Zustellung von Benachrichtigungen erforderlich sind</li>
+    <li>IDs bereits gesehener oder versendeter Inserate, die lokal gespeichert werden, um Duplikate zu vermeiden</li>
+  </ul>
+  <p>Es werden keine personenbezogenen Daten Dritter erhoben. Alle Daten verbleiben auf dem Server des Betreibers und werden nicht an Dritte weitergegeben, mit Ausnahme von Telegram (siehe Abschnitt 5).</p>
+
+  <h2>4. Rechtsgrundlage</h2>
+  <p>
+    Die Datenverarbeitung erfolgt auf Basis von Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung bzw. vorvertragliche Maßnahmen) sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Das berechtigte Interesse besteht im Betrieb eines automatisierten Monitoring-Dienstes, der ausschließlich öffentlich verfügbare Daten auswertet.
+  </p>
+
+  <h2>5. Drittdienste — Telegram</h2>
+  <p>
+    Zur Zustellung von Benachrichtigungen wird die Telegram Bot API verwendet (Telegram Messenger Inc., Dubai, VAE). Dabei wird die Telegram-Chat-ID sowie der Nachrichteninhalt an Telegram übermittelt. Es gelten die <a href="https://telegram.org/privacy" target="_blank" rel="noopener">Datenschutzbestimmungen von Telegram</a>.
+  </p>
+
+  <h2>6. Scraping öffentlicher Daten</h2>
+  <p>
+    CaRadar ruft automatisiert öffentlich zugängliche Inserate von willhaben.at ab. Es werden ausschließlich bereits veröffentlichte, allgemein einsehbare Informationen verarbeitet. Der Abruf erfolgt mit angemessenen zeitlichen Abständen und einem identifizierbaren User-Agent.
+  </p>
+
+  <h2>7. Speicherdauer</h2>
+  <p>
+    Suchanfragen und Alert-Historien werden lokal auf dem Server gespeichert und können jederzeit durch den Betreiber gelöscht werden. Es gibt keine automatische Löschfrist, da der Dienst ausschließlich vom Betreiber selbst genutzt wird.
+  </p>
+
+  <h2>8. Betroffenenrechte</h2>
+  <p>Gemäß DSGVO stehen Ihnen folgende Rechte zu:</p>
+  <ul>
+    <li>Recht auf Auskunft (Art. 15 DSGVO)</li>
+    <li>Recht auf Berichtigung (Art. 16 DSGVO)</li>
+    <li>Recht auf Löschung (Art. 17 DSGVO)</li>
+    <li>Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+    <li>Recht auf Datenübertragbarkeit (Art. 20 DSGVO)</li>
+    <li>Widerspruchsrecht (Art. 21 DSGVO)</li>
+  </ul>
+  <p>Zur Ausübung Ihrer Rechte wenden Sie sich bitte per E-Mail an <a href="mailto:dejan120679@gmail.com">dejan120679@gmail.com</a>.</p>
+
+  <h2>9. Beschwerderecht</h2>
+  <p>
+    Sie haben das Recht, bei der österreichischen Datenschutzbehörde Beschwerde einzulegen:<br>
+    Datenschutzbehörde, Barichgasse 40–42, 1030 Wien<br>
+    <a href="https://www.dsb.gv.at" target="_blank" rel="noopener">www.dsb.gv.at</a>
+  </p>
+
+  <h2>10. Cookies</h2>
+  <p>
+    Der Dienst setzt ein technisch notwendiges Session-Cookie (<code>crsid</code>), das ausschließlich der Authentifizierung dient. Es werden keine Tracking- oder Analyse-Cookies verwendet.
+  </p>
+</div>
+
+<footer>© 2026 CaRadar &nbsp;·&nbsp; <a href="/impressum">Impressum</a> &nbsp;·&nbsp; <a href="/datenschutz">Datenschutz</a></footer>
+</div>
+</body>
+</html>

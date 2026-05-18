@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaRadar — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --card: #1a1f2e; --border: #1e2540;
+  --blue: #3b82f6; --text: #f1f5f9; --muted: #64748b; --red: #ef4444; --r: 14px;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background-image: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(59,130,246,.07) 0%, transparent 60%);
+}
+.box {
+  background: rgba(26,31,46,.85); backdrop-filter: blur(20px);
+  border: 1px solid rgba(59,130,246,.18); border-radius: var(--r);
+  padding: 42px 40px; width: 360px;
+  box-shadow: 0 8px 48px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.logo-wrap { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 32px; }
+.logo-text { font-size: 1.6rem; font-weight: 800; letter-spacing: -.5px; }
+.logo-text .w { color: #fff; }
+.logo-text .b { color: var(--blue); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.lbl { font-size: .72rem; font-weight: 600; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; }
+input[type="password"] {
+  background: rgba(10,12,20,.85); border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px; color: var(--text); font-family: inherit; font-size: .9rem;
+  padding: 10px 13px; outline: none; width: 100%;
+  transition: border-color .2s, box-shadow .2s;
+}
+input[type="password"]:focus {
+  border-color: rgba(59,130,246,.55); box-shadow: 0 0 0 3px rgba(59,130,246,.11);
+}
+.btn-login {
+  width: 100%; padding: 11px; border: none; border-radius: 9px;
+  background: var(--blue); color: #fff; font-family: inherit; font-size: .9rem;
+  font-weight: 600; cursor: pointer; margin-top: 8px;
+  box-shadow: 0 0 20px rgba(59,130,246,.35);
+  transition: background .15s, box-shadow .15s;
+}
+.btn-login:hover { background: #2563eb; box-shadow: 0 0 28px rgba(59,130,246,.5); }
+.btn-login:active { transform: scale(.98); }
+.error { color: var(--red); font-size: .82rem; margin-top: 10px; text-align: center; min-height: 18px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo-wrap">
+    <svg width="52" height="26" viewBox="0 0 78 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 27 L3 21 L13 14 L28 12 L46 12 L55 17 L59 21 L59 27 Z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+      <circle cx="17" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <circle cx="45" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
+      <path d="M22 17 L26 12" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round"/>
+      <path d="M63 19 Q69 23 63 29" stroke="#3b82f6" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+      <path d="M66 15 Q75 23 66 33" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
+      <path d="M69 11 Q78 23 69 37" stroke="#3b82f6" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".3"/>
+    </svg>
+    <div class="logo-text"><span class="w">Ca</span><span class="b">Radar</span></div>
+  </div>
+  <div class="field">
+    <div class="lbl">Passwort</div>
+    <input type="password" id="pw" placeholder="Passwort eingeben" autofocus>
+  </div>
+  <button class="btn-login" id="btnLogin">Anmelden</button>
+  <div class="error" id="errMsg"></div>
+</div>
+<script>
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const err = document.getElementById('errMsg');
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await r.json();
+    if (d.ok) { window.location.href = '/'; }
+    else { err.textContent = d.error || 'Falsches Passwort'; }
+  } catch { err.textContent = 'Netzwerkfehler'; }
+}
+document.getElementById('btnLogin').addEventListener('click', login);
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ const https   = require('https');
 const fs      = require('fs');
 const path    = require('path');
 const os      = require('os');
+const crypto  = require('crypto');
 
 function runCmd(cmd, callback) {
   const child = spawn(cmd, [], { windowsHide: true, shell: true });
@@ -24,6 +25,20 @@ const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
 const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
 const LOG_OUT            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-out.log');
 const LOG_ERR         = path.join(os.homedir(), '.pm2', 'logs', 'caradar-error.log');
+
+const PASSWORD    = 'caradar777';
+const SECRET      = 'caradar-session-secret-x9k2m';
+const VALID_TOKEN = crypto.createHmac('sha256', SECRET).update(PASSWORD).digest('hex');
+
+function getCookie(req, name) {
+  const cookieStr = req.headers.cookie || '';
+  const cookie = cookieStr.split(';').find(c => c.trim().startsWith(name + '='));
+  return cookie ? cookie.trim().slice(name.length + 1) : null;
+}
+
+function isAuthenticated(req) {
+  return getCookie(req, 'crsid') === VALID_TOKEN;
+}
 
 function getMode() {
   try { return JSON.parse(fs.readFileSync(MODE_FILE, 'utf8')).mode || 'stopped'; }
@@ -76,7 +91,45 @@ function sendTelegram(text) {
 }
 
 app.use(express.json());
+
+// ── Unprotected routes ────────────────────────────────────────────────────────
+
+app.get('/login', (req, res) => {
+  if (isAuthenticated(req)) return res.redirect('/');
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/impressum', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'impressum.html'));
+});
+
+app.get('/datenschutz', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'datenschutz.html'));
+});
+
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  if (password !== PASSWORD) {
+    return res.status(401).json({ error: 'Falsches Passwort' });
+  }
+  const maxAge = 7 * 24 * 60 * 60;
+  res.setHeader('Set-Cookie', `crsid=${VALID_TOKEN}; HttpOnly; Max-Age=${maxAge}; Path=/; SameSite=Strict`);
+  res.json({ ok: true });
+});
+
+// ── Auth middleware ───────────────────────────────────────────────────────────
+
+app.use((req, res, next) => {
+  if (!isAuthenticated(req)) {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Nicht angemeldet' });
+    return res.redirect('/login');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Protected API routes ──────────────────────────────────────────────────────
 
 app.get('/api/config', (req, res) => {
   try {

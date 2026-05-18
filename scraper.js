@@ -251,6 +251,7 @@ async function scrapeListings() {
         return {
           id:          String(ad.id),
           description: (ad.description || '').trim(),
+          body:        (ad.body || '').trim(),
           make:        (get('CAR_MODEL/MAKE')       || '').trim(),
           model:       (get('CAR_MODEL/MODEL')      || '').trim(),
           state:       (get('STATE')                || '').trim(),
@@ -292,7 +293,8 @@ function matchesConfig(l) {
   }
   if (CONFIG.zusatz && CONFIG.zusatz.trim()) {
     const z = CONFIG.zusatz.trim().toLowerCase();
-    if (!l.description.toLowerCase().includes(z)) return false;
+    const hay = (l.description + ' ' + (l.body || '')).toLowerCase();
+    if (!hay.includes(z)) return false;
   }
   if (CONFIG.preisMin  !== null && l.price   !== null && l.price   < CONFIG.preisMin)  return false;
   if (CONFIG.preisMax  !== null && l.price   !== null && l.price   > CONFIG.preisMax)  return false;
@@ -331,12 +333,6 @@ function matchesConfig(l) {
     if (l.published === null) return false;
     const ms = l.published > 1e12 ? l.published : l.published * 1000;
     if (Date.now() - ms > CONFIG.maxAlterStunden * 60 * 60 * 1000) return false;
-  }
-
-  if (CONFIG.minAlterStunden) {
-    if (l.published === null) return false;
-    const ms = l.published > 1e12 ? l.published : l.published * 1000;
-    if (Date.now() - ms < CONFIG.minAlterStunden * 60 * 60 * 1000) return false;
   }
 
   return true;
