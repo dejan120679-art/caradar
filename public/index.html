@@ -47,7 +47,7 @@ header {
   margin-bottom: 28px;
 }
 .logo-wrap { display: flex; align-items: center; gap: 12px; }
-.logo-svg  { width: 76px; height: 38px; flex-shrink: 0; }
+.logo-svg  { width: 90px; height: 40px; flex-shrink: 0; overflow: visible; }
 .logo-text { font-size: 1.55rem; font-weight: 800; letter-spacing: -.5px; line-height: 1; }
 .logo-text .w { color: #fff; }
 .logo-text .b { color: var(--blue); }
@@ -76,14 +76,29 @@ header {
 
 /* ── GLASS CARD ─────────────────────────────────────────────────────── */
 .card {
-  background: rgba(26,31,46,.75);
+  background: rgba(26,31,46,.78);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(59,130,246,.14);
+  border: 1px solid rgba(59,130,246,.38);
   border-radius: var(--r);
   padding: 26px 30px;
   margin-bottom: 18px;
-  box-shadow: 0 4px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
+  box-shadow:
+    0 4px 32px rgba(0,0,0,.45),
+    0 0 0 1px rgba(59,130,246,.07),
+    0 0 18px rgba(59,130,246,.13),
+    0 0 56px rgba(59,130,246,.06),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  transition: box-shadow .35s ease, border-color .35s ease;
+}
+.card:hover {
+  border-color: rgba(59,130,246,.60);
+  box-shadow:
+    0 6px 40px rgba(0,0,0,.5),
+    0 0 0 1px rgba(59,130,246,.12),
+    0 0 28px rgba(59,130,246,.22),
+    0 0 80px rgba(59,130,246,.10),
+    inset 0 1px 0 rgba(255,255,255,.09);
 }
 .card-header { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
 .card-header svg { color: var(--blue); flex-shrink: 0; }
@@ -292,14 +307,17 @@ footer a:hover { color: var(--text); }
 <!-- HEADER -->
 <header>
   <div class="logo-wrap">
-    <svg class="logo-svg" viewBox="0 0 78 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 27 L3 21 L13 14 L28 12 L46 12 L55 17 L59 21 L59 27 Z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-      <circle cx="17" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
-      <circle cx="45" cy="27" r="4" stroke="white" stroke-width="1.4" fill="none"/>
-      <path d="M22 17 L26 12" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round"/>
-      <path d="M63 19 Q69 23 63 29" stroke="#3b82f6" stroke-width="1.7" fill="none" stroke-linecap="round"/>
-      <path d="M66 15 Q75 23 66 33" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".6"/>
-      <path d="M69 11 Q78 23 69 37" stroke="#3b82f6" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".3"/>
+    <svg class="logo-svg" viewBox="0 0 104 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Coupé silhouette: right-facing, clean outline with wheel arches -->
+      <path d="M2 36 L2 30 L9 23 L18 14 L27 10 L48 10 L56 13 L65 21 L70 27 L72 31 L72 36 L63 36 C63 27 49 27 49 36 L28 36 C28 27 14 27 14 36 Z"
+            stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- Wheels -->
+      <circle cx="56" cy="36" r="7" stroke="white" stroke-width="1.5" fill="#0f1117"/>
+      <circle cx="21" cy="36" r="7" stroke="white" stroke-width="1.5" fill="#0f1117"/>
+      <!-- Radar waves from car front -->
+      <path d="M75 22 Q86 31 75 40" stroke="#3b82f6" stroke-width="2.0" fill="none" stroke-linecap="round"/>
+      <path d="M80 16 Q96 31 80 46" stroke="#3b82f6" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".6"/>
+      <path d="M85 11 Q104 31 85 51" stroke="#3b82f6" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".3"/>
     </svg>
     <div class="logo-text"><span class="w">Ca</span><span class="b">Radar</span></div>
   </div>
