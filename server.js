@@ -210,7 +210,6 @@ app.get('/api/status', (req, res) => {
       lastAlert:   getLastAlert(),
       searchLabel: getSearchLabel(),
       alertsToday: getAlertsToday(),
-      alertsMax:   (() => { try { return JSON.parse(fs.readFileSync(CONFIG_FILE,'utf8')).maxAlertsProTag || null; } catch { return null; } })(),
     });
   });
 });

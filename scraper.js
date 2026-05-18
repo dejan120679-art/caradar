@@ -141,26 +141,24 @@ function loadSeen() {
     const raw = JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'));
     const ids = Array.isArray(raw) ? raw : (raw.ids || []);
     return {
-      ids:                new Set(ids),
-      lastAlertDate:      raw.lastAlertDate      || null,
-      lastHeartbeatDate:  raw.lastHeartbeatDate  || null,
-      alertsToday:        raw.alertsToday        || 0,
-      alertsDate:         raw.alertsDate         || null,
-      limitAlertSentDate: raw.limitAlertSentDate || null,
+      ids:               new Set(ids),
+      lastAlertDate:     raw.lastAlertDate     || null,
+      lastHeartbeatDate: raw.lastHeartbeatDate || null,
+      alertsToday:       raw.alertsToday       || 0,
+      alertsDate:        raw.alertsDate        || null,
     };
   } catch {
-    return { ids: new Set(), lastAlertDate: null, lastHeartbeatDate: null, alertsToday: 0, alertsDate: null, limitAlertSentDate: null };
+    return { ids: new Set(), lastAlertDate: null, lastHeartbeatDate: null, alertsToday: 0, alertsDate: null };
   }
 }
 
-function saveSeen(ids, lastAlertDate, lastHeartbeatDate, alertsToday, alertsDate, limitAlertSentDate) {
+function saveSeen(ids, lastAlertDate, lastHeartbeatDate, alertsToday, alertsDate) {
   fs.writeFileSync(SEEN_FILE, JSON.stringify({
     ids: [...ids].slice(-MAX_SEEN),
     lastAlertDate,
     lastHeartbeatDate,
     alertsToday,
     alertsDate,
-    limitAlertSentDate,
   }));
 }
 
@@ -471,15 +469,13 @@ async function run() {
   const ts = new Date().toLocaleTimeString('de-AT');
   console.log(`[${ts}] Suche: ${searchLabel()} | URL: ${buildSearchUrl()}`);
 
-  const { ids: seen, lastAlertDate, lastHeartbeatDate, alertsToday: _alertsToday, alertsDate, limitAlertSentDate } = loadSeen();
+  const { ids: seen, lastAlertDate, lastHeartbeatDate, alertsToday: _alertsToday, alertsDate } = loadSeen();
   const sent = loadSent();
-  let newLastAlertDate      = lastAlertDate;
-  let newLastHeartbeatDate  = lastHeartbeatDate;
-  let newLimitAlertSentDate = limitAlertSentDate;
+  let newLastAlertDate     = lastAlertDate;
+  let newLastHeartbeatDate = lastHeartbeatDate;
 
   const { date: today, hour, minute } = viennaDateHour();
   let alertsToday = (alertsDate === today) ? _alertsToday : 0;
-  const maxDaily  = CONFIG.maxAlertsProTag || null;
 
   const listings = await scrapeListings();
   const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
@@ -488,19 +484,6 @@ async function run() {
   console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
 
   for (const l of toAlert) {
-    if (maxDaily !== null && alertsToday >= maxDaily) {
-      if (newLimitAlertSentDate !== today) {
-        try {
-          await bot.sendMessage(getChatId(),
-            `⚠️ Tageslimit von ${maxDaily} Alerts erreicht — weitere Alerts erst wieder morgen.`
-          );
-          newLimitAlertSentDate = today;
-          console.log('  Tageslimit erreicht.');
-        } catch {}
-      }
-      seen.add(l.id);
-      continue;
-    }
     try {
       await sendAlert(l);
       seen.add(l.id);
@@ -532,7 +515,7 @@ async function run() {
     }
   }
 
-  saveSeen(seen, newLastAlertDate, newLastHeartbeatDate, alertsToday, today, newLimitAlertSentDate);
+  saveSeen(seen, newLastAlertDate, newLastHeartbeatDate, alertsToday, today);
   saveSent(sent);
 }
 

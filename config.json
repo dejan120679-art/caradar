@@ -1,26 +1,20 @@
 {
-  "marke": "Honda",
-  "modell": "crv",
+  "marke": "Mercedes-Benz",
+  "modell": "GLB",
+  "zusatz": "220",
   "preisMin": null,
-  "preisMax": 60000,
-  "kmMax": 90000,
-  "baujahrVon": 2024,
+  "preisMax": null,
+  "kmMax": null,
+  "baujahrVon": null,
   "baujahrBis": null,
   "ort": "",
+  "plz": "",
   "radiusKm": null,
   "zustand": [
-    "gebraucht",
-    "beschaedigt"
+    "gebraucht"
   ],
-  "kraftstoff": [
-    "benzin",
-    "diesel",
-    "elektro",
-    "hybrid"
-  ],
-  "getriebe": [
-    "automatik"
-  ],
-  "maxAlterStunden": null,
+  "kraftstoff": [],
+  "getriebe": [],
+  "maxAlterStunden": 168,
   "minAlterStunden": null
 }

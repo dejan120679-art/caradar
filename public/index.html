@@ -123,7 +123,8 @@ header {
   select, input[type="number"], input[type="text"] { font-size: 16px; min-height: 48px; padding: 12px 14px; }
   select { padding-right: 34px; }
   .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-  .btn-row .btn { min-height: 48px; flex: unset; }
+  .btn-row .btn { min-height: 48px; flex: unset; width: 100%; }
+  .btn-row .btn-start { grid-column: 1 / -1; }
   .stat-strip { grid-template-columns: 1fr; gap: 10px; }
   .plz-row { flex-wrap: wrap; gap: 8px; }
   .oder-badge { width: 100%; }
@@ -512,8 +513,8 @@ footer a:hover { color: var(--text); }
       </div>
     </div>
 
-    <!-- Zeile 4: Kraftstoff / Getriebe / Max Alerts -->
-    <div class="row c3">
+    <!-- Zeile 4: Kraftstoff / Getriebe -->
+    <div class="row c2">
       <div class="field">
         <div class="lbl">Kraftstoff</div>
         <select id="kraftstoff" name="kraftstoff">
@@ -532,13 +533,6 @@ footer a:hover { color: var(--text); }
           <option value="schaltgetriebe">Handschaltung</option>
         </select>
       </div>
-      <div class="field">
-        <div class="lbl">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          Max. Alerts / Tag <span class="opt">(opt.)</span>
-        </div>
-        <input type="number" id="maxAlertsProTag" name="maxAlertsProTag" placeholder="unbegrenzt" min="1">
-      </div>
     </div>
 
     <div class="divider"></div>
@@ -547,7 +541,8 @@ footer a:hover { color: var(--text); }
     <div class="field">
       <div class="lbl">Inseratsalter</div>
       <div class="checks">
-        <label class="chk"><input type="radio" name="alterFilter" value="" checked><span class="chk-box"></span>Nur neue</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="egal" checked><span class="chk-box"></span>Egal</label>
+        <label class="chk"><input type="radio" name="alterFilter" value=""><span class="chk-box"></span>Nur neue</label>
         <label class="chk"><input type="radio" name="alterFilter" value="1"><span class="chk-box"></span>Bis 1 Stunde</label>
         <label class="chk"><input type="radio" name="alterFilter" value="24"><span class="chk-box"></span>Bis 1 Tag</label>
         <label class="chk"><input type="radio" name="alterFilter" value="168"><span class="chk-box"></span>Bis 1 Woche</label>
@@ -720,11 +715,11 @@ async function loadConfig() {
     setVal('ort',             cfg.ort             || '');
     setVal('plz',             cfg.plz             || '');
     setVal('radiusKm',        cfg.radiusKm        ?? '');
-    const alterVal = cfg.minAlterStunden ? 'min168' : (cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : '');
+    const alterVal = cfg.alterFilter !== undefined ? cfg.alterFilter :
+                     cfg.minAlterStunden ? 'min168' : (cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : 'egal');
     const alterRadio = document.querySelector(`input[name="alterFilter"][value="${alterVal}"]`);
     if (alterRadio) alterRadio.checked = true;
-    else document.querySelector('input[name="alterFilter"][value=""]').checked = true;
-    setVal('maxAlertsProTag', cfg.maxAlertsProTag ?? '');
+    else document.querySelector('input[name="alterFilter"][value="egal"]').checked = true;
     setVal('kraftstoff',      (cfg.kraftstoff || [])[0] || '');
     setVal('getriebe',        (cfg.getriebe   || [])[0] || '');
     const zustand = cfg.zustand || [];
@@ -752,23 +747,23 @@ function readForm() {
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
     kraftstoff:      str('kraftstoff') ? [str('kraftstoff')] : [],
     getriebe:        str('getriebe')   ? [str('getriebe')]   : [],
-    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return (v && v !== 'min168') ? Number(v) : null; })(),
+    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return (v && v !== 'min168' && v !== 'egal') ? Number(v) : null; })(),
     minAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return v === 'min168' ? 168 : null; })(),
-    maxAlertsProTag: num('maxAlertsProTag'),
+    alterFilter:     document.querySelector('input[name="alterFilter"]:checked')?.value ?? 'egal',
   };
 }
 
 function clearForm() {
   document.getElementById('marke').value = '';
   populateModels();
-  ['zusatz','preisMin','preisMax','kmMax','maxAlertsProTag','plz'].forEach(id => {
+  ['zusatz','preisMin','preisMax','kmMax','plz'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   ['baujahrVon','baujahrBis','ort','kraftstoff','getriebe','radiusKm'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-  document.querySelector('input[name="alterFilter"][value=""]').checked = true;
+  document.querySelector('input[name="alterFilter"][value="egal"]').checked = true;
   toast('Formular geleert.', 'ok');
 }
 
@@ -873,9 +868,7 @@ async function pollStatus() {
     }
 
     if (data.alertsToday !== undefined) {
-      const max = data.alertsMax;
-      document.getElementById('alertsTodayInfo').textContent =
-        max ? `${data.alertsToday} von ${max}` : `${data.alertsToday} heute`;
+      document.getElementById('alertsTodayInfo').textContent = `${data.alertsToday} heute`;
     }
 
     const logBox = document.getElementById('logBox');
