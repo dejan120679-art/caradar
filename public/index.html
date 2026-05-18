@@ -551,6 +551,7 @@ footer a:hover { color: var(--text); }
         <label class="chk"><input type="radio" name="alterFilter" value="1"><span class="chk-box"></span>Bis 1 Stunde</label>
         <label class="chk"><input type="radio" name="alterFilter" value="24"><span class="chk-box"></span>Bis 1 Tag</label>
         <label class="chk"><input type="radio" name="alterFilter" value="168"><span class="chk-box"></span>Bis 1 Woche</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="min168"><span class="chk-box"></span>Älter als 1 Woche</label>
       </div>
     </div>
 
@@ -719,7 +720,7 @@ async function loadConfig() {
     setVal('ort',             cfg.ort             || '');
     setVal('plz',             cfg.plz             || '');
     setVal('radiusKm',        cfg.radiusKm        ?? '');
-    const alterVal = cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : '';
+    const alterVal = cfg.minAlterStunden ? 'min168' : (cfg.maxAlterStunden ? String(cfg.maxAlterStunden) : '');
     const alterRadio = document.querySelector(`input[name="alterFilter"][value="${alterVal}"]`);
     if (alterRadio) alterRadio.checked = true;
     else document.querySelector('input[name="alterFilter"][value=""]').checked = true;
@@ -751,7 +752,8 @@ function readForm() {
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
     kraftstoff:      str('kraftstoff') ? [str('kraftstoff')] : [],
     getriebe:        str('getriebe')   ? [str('getriebe')]   : [],
-    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return v ? Number(v) : null; })(),
+    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return (v && v !== 'min168') ? Number(v) : null; })(),
+    minAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return v === 'min168' ? 168 : null; })(),
     maxAlertsProTag: num('maxAlertsProTag'),
   };
 }

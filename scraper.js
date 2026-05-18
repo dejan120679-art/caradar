@@ -348,6 +348,12 @@ function matchesConfig(l) {
     if (Date.now() - ms > CONFIG.maxAlterStunden * 60 * 60 * 1000) return false;
   }
 
+  if (CONFIG.minAlterStunden) {
+    if (l.published === null) return false;
+    const ms = l.published > 1e12 ? l.published : l.published * 1000;
+    if (Date.now() - ms < CONFIG.minAlterStunden * 60 * 60 * 1000) return false;
+  }
+
   return true;
 }
 
