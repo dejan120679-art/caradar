@@ -300,9 +300,10 @@ function matchesConfig(l) {
       return false;
   }
   if (CONFIG.modell) {
-    const m = CONFIG.modell.toLowerCase().replace(/[-\s]+/g, '');
-    if (!l.model.toLowerCase().replace(/[-\s]+/g, '').includes(m) &&
-        !l.description.toLowerCase().replace(/[-\s]+/g, '').includes(m))
+    const escaped  = CONFIG.modell.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const flexible = escaped.replace(/[-\s]+/g, '[-\\s]*');
+    const re       = new RegExp(`(?<![\\w])${flexible}(?![\\w])`, 'i');
+    if (!re.test(l.model) && !re.test(l.description) && !re.test(l.modelSpec))
       return false;
   }
   if (CONFIG.zusatz && CONFIG.zusatz.trim()) {
