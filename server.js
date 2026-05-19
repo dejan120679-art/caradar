@@ -27,9 +27,22 @@ const LOG_OUT            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-out.
 const LOG_ERR            = path.join(os.homedir(), '.pm2', 'logs', 'caradar-error.log');
 const USER_CONFIG_FILE   = path.join(__dirname, 'user-config.json');
 
-const PASSWORD    = 'caradar777';
-const SECRET      = 'caradar-session-secret-x9k2m';
+const PASSWORD    = process.env.CARADAR_PASSWORD || 'caradar777';
+const SECRET      = process.env.CARADAR_SECRET   || 'caradar-session-secret-x9k2m';
 const VALID_TOKEN = crypto.createHmac('sha256', SECRET).update(PASSWORD).digest('hex');
+
+const loginAttempts = new Map();
+function checkRateLimit(ip) {
+  const now   = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (entry && now < entry.resetAt) {
+    if (entry.count >= 5) return false;
+    entry.count++;
+    return true;
+  }
+  loginAttempts.set(ip, { count: 1, resetAt: now + 60_000 });
+  return true;
+}
 
 function getCookie(req, name) {
   const cookieStr = req.headers.cookie || '';
@@ -119,6 +132,10 @@ app.get('/datenschutz', (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Zu viele Versuche. Bitte warte 60 Sekunden.' });
+  }
   const { password } = req.body;
   if (password !== PASSWORD) {
     return res.status(401).json({ error: 'Falsches Passwort' });

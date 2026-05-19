@@ -28,7 +28,8 @@ const LAST_ALERT_FILE    = path.join(__dirname, 'lastAlert.json');
 const ALERT_HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
 const MODE_FILE          = path.join(__dirname, 'scraper-mode.json');
 const STATE_FILE      = path.join(__dirname, 'browser-state.json');
-const MAX_SEEN   = 1000;
+const MAX_SEEN          = 1000;
+const MAX_ALERTS_PER_RUN = 5;
 
 function getChatId() {
   try {
@@ -185,8 +186,8 @@ function saveLastAlert(vehicle, price, dateStr, ort) {
 }
 
 function getMode() {
-  try { return JSON.parse(fs.readFileSync(MODE_FILE, 'utf8')).mode || 'running'; }
-  catch { return 'running'; }
+  try { return JSON.parse(fs.readFileSync(MODE_FILE, 'utf8')).mode || 'stopped'; }
+  catch { return 'stopped'; }
 }
 
 function setMode(mode) {
@@ -480,11 +481,16 @@ async function run() {
 
   const listings = await scrapeListings();
   const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
-  const toAlert  = unseen.filter(isFresh);
+  const fresh    = unseen.filter(isFresh);
   const tooOld   = unseen.filter(l => !isFresh(l));
-  console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toAlert.length} Alerts${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
+  const toSend   = fresh.slice(0, MAX_ALERTS_PER_RUN);
+  const skipped  = fresh.slice(MAX_ALERTS_PER_RUN);
+  const limitMsg = skipped.length ? ` | ${skipped.length} übersprungen (Limit ${MAX_ALERTS_PER_RUN}/Lauf)` : '';
+  console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toSend.length} Alerts${limitMsg}${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
 
-  for (const l of toAlert) {
+  skipped.forEach(l => seen.add(l.id));
+
+  for (const l of toSend) {
     try {
       await sendAlert(l);
       seen.add(l.id);

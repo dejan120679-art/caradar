@@ -542,7 +542,7 @@ footer a:hover { color: var(--text); }
       <div class="lbl">Inseratsalter</div>
       <div class="checks">
         <label class="chk"><input type="radio" name="alterFilter" value="egal" checked><span class="chk-box"></span>Egal</label>
-        <label class="chk"><input type="radio" name="alterFilter" value=""><span class="chk-box"></span>Nur neue</label>
+        <label class="chk"><input type="radio" name="alterFilter" value="new"><span class="chk-box"></span>Nur neue</label>
         <label class="chk"><input type="radio" name="alterFilter" value="1"><span class="chk-box"></span>Bis 1 Stunde</label>
         <label class="chk"><input type="radio" name="alterFilter" value="24"><span class="chk-box"></span>Bis 1 Tag</label>
         <label class="chk"><input type="radio" name="alterFilter" value="168"><span class="chk-box"></span>Bis 1 Woche</label>
@@ -674,7 +674,7 @@ function populateModels() {
 (function() {
   const from = document.getElementById('baujahrVon');
   const to   = document.getElementById('baujahrBis');
-  for (let y = 2025; y >= 1990; y--) {
+  for (let y = 2025; y >= 1970; y--) {
     [from, to].forEach(sel => {
       const opt = document.createElement('option');
       opt.value = opt.textContent = y;
@@ -747,7 +747,7 @@ function readForm() {
     zustand:         [...document.querySelectorAll('input[name="zustand"]:checked')].map(c => c.value),
     kraftstoff:      str('kraftstoff') ? [str('kraftstoff')] : [],
     getriebe:        str('getriebe')   ? [str('getriebe')]   : [],
-    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return (v && v !== 'min168' && v !== 'egal') ? Number(v) : null; })(),
+    maxAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return (v && v !== 'min168' && v !== 'egal' && v !== 'new') ? Number(v) : null; })(),
     minAlterStunden: (() => { const v = document.querySelector('input[name="alterFilter"]:checked')?.value; return v === 'min168' ? 168 : null; })(),
     alterFilter:     document.querySelector('input[name="alterFilter"]:checked')?.value ?? 'egal',
   };
