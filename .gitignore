@@ -8,3 +8,6 @@ lastAlert.json
 alertHistory.json
 scraper-mode.json
 debug-condition.js
+debug-structure.js
+debug-nextdata.json
+config.json
