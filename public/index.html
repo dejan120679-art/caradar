@@ -674,7 +674,7 @@ function populateModels() {
 (function() {
   const from = document.getElementById('baujahrVon');
   const to   = document.getElementById('baujahrBis');
-  for (let y = 2025; y >= 1970; y--) {
+  for (let y = new Date().getFullYear(); y >= 1970; y--) {
     [from, to].forEach(sel => {
       const opt = document.createElement('option');
       opt.value = opt.textContent = y;

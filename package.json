@@ -1,13 +1,14 @@
 {
   "name": "caradar",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Willhaben-Fahrzeug-Alert-Dienst mit Telegram-Benachrichtigungen und Web-UI.",
+  "main": "scraper.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node scraper.js",
+    "ui": "node server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["willhaben", "scraper", "telegram", "alert", "auto"],
+  "author": "Dejan Mladenovic",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

@@ -360,13 +360,6 @@ function matchesConfig(l) {
   return true;
 }
 
-function isFresh(listing) {
-  if (!CONFIG.maxAlterStunden) return true; // kein Limit gesetzt → immer senden
-  if (!listing.published) return true;
-  const ms = listing.published > 1e12 ? listing.published : listing.published * 1000;
-  return Date.now() - ms < CONFIG.maxAlterStunden * 60 * 60 * 1000;
-}
-
 // ─── Telegram ─────────────────────────────────────────────────────────────────
 
 function escHtml(text) {
@@ -403,8 +396,8 @@ function searchLabel() {
 
 async function sendAlert(listing) {
   const url = listing.seoUrl
-    ? `https://www.willhaben.at/iad/${listing.seoUrl}`
-    : `https://www.willhaben.at/iad/gebrauchtwagen/d/auto/-${listing.id}/`;
+    ? `https://www.willhaben.at/iad/${encodeURI(listing.seoUrl)}`
+    : `https://www.willhaben.at/iad/gebrauchtwagen/d/auto/-${encodeURIComponent(listing.id)}/`;
 
   const pub      = formatPublished(listing.published);
   const priceStr = listing.price !== null
@@ -445,7 +438,7 @@ async function sendAlert(listing) {
     listing.phone ? `📞 ${escHtml(listing.phone)}` : null,
     pub           ? `🕐 ${escHtml(pub.dateStr)}`   : null,
     '',
-    `🔗 <a href="${url}">Inserat öffnen</a>`,
+    `🔗 <a href="${escHtml(url)}">Inserat öffnen</a>`,
     '',
     '⚠️ Bitte Inserat und Verkäufer vor dem Kauf sorgfältig prüfen. CaRadar haftet nicht für Inseratsinhalte.',
   ].filter(l => l !== null);
@@ -477,17 +470,15 @@ async function run() {
   let newLastAlertDate     = lastAlertDate;
   let newLastHeartbeatDate = lastHeartbeatDate;
 
-  const { date: today, hour, minute } = viennaDateHour();
+  const { date: today, hour } = viennaDateHour();
   let alertsToday = (alertsDate === today) ? _alertsToday : 0;
 
   const listings = await scrapeListings();
   const unseen   = listings.filter(l => !seen.has(l.id) && !sent.has(l.id));
-  const fresh    = unseen.filter(isFresh);
-  const tooOld   = unseen.filter(l => !isFresh(l));
-  const toSend   = fresh.slice(0, MAX_ALERTS_PER_RUN);
-  const skipped  = fresh.slice(MAX_ALERTS_PER_RUN);
+  const toSend   = unseen.slice(0, MAX_ALERTS_PER_RUN);
+  const skipped  = unseen.slice(MAX_ALERTS_PER_RUN);
   const limitMsg = skipped.length ? ` | ${skipped.length} übersprungen (Limit ${MAX_ALERTS_PER_RUN}/Lauf)` : '';
-  console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toSend.length} Alerts${limitMsg}${tooOld.length ? ` | ${tooOld.length} zu alt` : ''}`);
+  console.log(`  ${listings.length} Treffer | ${unseen.length} neu | ${toSend.length} Alerts${limitMsg}`);
 
   skipped.forEach(l => seen.add(l.id));
 
@@ -508,10 +499,8 @@ async function run() {
       console.error(`  Telegram-Fehler: ${sendErr.message}`);
     }
   }
-  tooOld.forEach(l => seen.add(l.id));
-
-  // Tages-Heartbeat um 09:00 Uhr — nur wenn heute noch kein Alert und noch kein Heartbeat
-  if (hour === 9 && minute < 5 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
+  // Tages-Heartbeat ab 09:00 — nur wenn heute noch kein Alert und noch kein Heartbeat
+  if (hour >= 9 && newLastAlertDate !== today && newLastHeartbeatDate !== today) {
     try {
       await bot.sendMessage(getChatId(),
         '✅ CaRadar läuft — heute noch keine neuen Inserate gefunden die deinen Kriterien entsprechen.'
