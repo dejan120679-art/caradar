@@ -7,7 +7,8 @@ sent.json
 lastAlert.json
 alertHistory.json
 scraper-mode.json
+config.json
 debug-condition.js
 debug-structure.js
 debug-nextdata.json
-config.json
+debug-zusatz.js
